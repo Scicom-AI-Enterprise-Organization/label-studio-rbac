@@ -11,7 +11,7 @@ from django.contrib import auth
 from django.core.files.images import get_image_dimensions
 from django.shortcuts import redirect
 from django.urls import reverse
-from organizations.models import Organization
+from organizations.models import Organization, OrganizationMember
 
 
 def hash_upload(instance, filename):
@@ -63,7 +63,14 @@ def save_user(request, next_page, user_form):
 
     if Organization.objects.exists():
         org = Organization.objects.first()
-        org.add_user(user)
+        # Users signing up via invite link get labeller role;
+        # users signing up via open registration get admin role.
+        token = request.GET.get('token')
+        if token:
+            role = OrganizationMember.Role.LABELLER
+        else:
+            role = OrganizationMember.Role.ADMIN
+        org.add_user(user, role=role)
     else:
         org = Organization.create_organization(created_by=user, title='Label Studio')
     user.active_organization = org

@@ -1,9 +1,22 @@
 import { format } from "date-fns";
+import { useCallback, useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { IconCross } from "@humansignal/icons";
-import { Userpic, Button } from "@humansignal/ui";
+import { Userpic, Button, Select } from "@humansignal/ui";
 import { cn } from "../../../utils/bem";
 import "./SelectedUser.scss";
+
+const ROLE_OPTIONS = [
+  { value: "admin", label: "Admin" },
+  { value: "qa", label: "QA (Supervisor)" },
+  { value: "labeller", label: "Labeller" },
+];
+
+const ROLE_LABELS = {
+  admin: "Admin",
+  qa: "QA (Supervisor)",
+  labeller: "Labeller",
+};
 
 const UserProjectsLinks = ({ projects }) => {
   return (
@@ -22,7 +35,26 @@ const UserProjectsLinks = ({ projects }) => {
   );
 };
 
-export const SelectedUser = ({ user, onClose }) => {
+export const SelectedUser = ({ user, onClose, isAdmin, onRoleChange }) => {
+  const [pendingRole, setPendingRole] = useState(user.role);
+  const [saving, setSaving] = useState(false);
+
+  const hasChanged = pendingRole !== user.role;
+
+  useEffect(() => {
+    setPendingRole(user.role);
+  }, [user.id, user.role]);
+
+  const handleSave = useCallback(async () => {
+    if (!hasChanged) return;
+    setSaving(true);
+    try {
+      await onRoleChange?.({ user }, pendingRole);
+    } finally {
+      setSaving(false);
+    }
+  }, [hasChanged, pendingRole, user, onRoleChange]);
+
   const fullName = [user.first_name, user.last_name]
     .filter((n) => !!n)
     .join(" ")
@@ -47,13 +79,43 @@ export const SelectedUser = ({ user, onClose }) => {
         </div>
       </div>
 
+      {user.role && (
+        <div className={cn("user-info").elem("section").toClassName()}>
+          <div className={cn("user-info").elem("section-title").toClassName()}>Role</div>
+          {isAdmin ? (
+            <div className="user-info__role-editor">
+              <Select
+                value={pendingRole}
+                options={ROLE_OPTIONS}
+                onChange={(val) => setPendingRole(val)}
+              />
+              {hasChanged && (
+                <Button
+                  look="primary"
+                  size="compact"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="user-info__role-save"
+                >
+                  {saving ? "Saving…" : "Save"}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <span className={`user-info__role-badge user-info__role-badge_${user.role}`}>
+              {ROLE_LABELS[user.role] || user.role}
+            </span>
+          )}
+        </div>
+      )}
+
       {user.phone && (
         <div className={cn("user-info").elem("section").toClassName()}>
           <a href={`tel:${user.phone}`}>{user.phone}</a>
         </div>
       )}
 
-      {!!user.created_projects.length && (
+      {!!user.created_projects?.length && (
         <div className={cn("user-info").elem("section").toClassName()}>
           <div className={cn("user-info").elem("section-title").toClassName()}>Created Projects</div>
 
@@ -61,7 +123,7 @@ export const SelectedUser = ({ user, onClose }) => {
         </div>
       )}
 
-      {!!user.contributed_to_projects.length && (
+      {!!user.contributed_to_projects?.length && (
         <div className={cn("user-info").elem("section").toClassName()}>
           <div className={cn("user-info").elem("section-title").toClassName()}>Contributed to</div>
 

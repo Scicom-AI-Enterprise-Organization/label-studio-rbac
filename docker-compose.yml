@@ -46,6 +46,8 @@ services:
     #      - LOG_LEVEL=DEBUG
     volumes:
       - ./mydata:/label-studio/data:rw
+      - ./label_studio:/label-studio/label_studio:rw
+      - static_build:/label-studio/label_studio/core/static_build:rw
     command: label-studio-uwsgi
 
   db:
@@ -65,3 +67,6 @@ services:
     volumes:
       - ${POSTGRES_DATA_DIR:-./postgres-data}:/var/lib/postgresql/data
       - ./deploy/pgsql/certs:/var/lib/postgresql/certs:ro
+
+volumes:
+  static_build:

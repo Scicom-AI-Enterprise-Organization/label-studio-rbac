@@ -176,8 +176,7 @@ class User(UserMixin, AbstractBaseUser, PermissionsMixin, UserLastActivityMixin)
             else:
                 return settings.HOSTNAME + self.avatar.url
 
-    def is_organization_admin(self, org_pk):
-        return True
+    # is_organization_admin is now provided by UserMixin with real role checks
 
     def active_organization_annotations(self):
         return self.annotations.filter(project__organization=self.active_organization)

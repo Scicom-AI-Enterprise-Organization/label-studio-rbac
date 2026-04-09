@@ -52,6 +52,10 @@
       width: 200px;
     }
 
+    &.role {
+      width: 160px;
+    }
+
     &.last-activity {
       width: 160px;
     }
@@ -104,4 +108,29 @@
       }
     }
   }
+
+  &__role-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 20px;
+
+    &_admin {
+      background-color: #e8daff;
+      color: #6b3fa0;
+    }
+
+    &_qa {
+      background-color: #d4edda;
+      color: #276749;
+    }
+
+    &_labeller {
+      background-color: #e2e8f0;
+      color: #4a5568;
+    }
+  }
+
 }

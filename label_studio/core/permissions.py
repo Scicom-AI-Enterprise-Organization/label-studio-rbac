@@ -65,11 +65,150 @@ all_permissions = AllPermissions()
 
 
 class ViewClassPermission(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     GET: Optional[str] = None
     PATCH: Optional[str] = None
     PUT: Optional[str] = None
     DELETE: Optional[str] = None
     POST: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Role-based permission mappings
+# Keys are OrganizationMember.Role values; values are sets of permission
+# strings that the role is allowed to perform.
+# ---------------------------------------------------------------------------
+
+ROLE_PERMISSIONS: dict[str, set[str]] = {
+    'admin': {
+        # Projects
+        all_permissions.projects_create,
+        all_permissions.projects_view,
+        all_permissions.projects_change,
+        all_permissions.projects_delete,
+        all_permissions.projects_reset_cache,
+        # Tasks
+        all_permissions.tasks_create,
+        all_permissions.tasks_view,
+        all_permissions.tasks_change,
+        all_permissions.tasks_delete,
+        # Annotations (label + review + approve)
+        all_permissions.annotations_create,
+        all_permissions.annotations_view,
+        all_permissions.annotations_change,
+        all_permissions.annotations_delete,
+        # Labels / templates
+        all_permissions.labels_create,
+        all_permissions.labels_view,
+        all_permissions.labels_change,
+        all_permissions.labels_delete,
+        # Organizations / users
+        all_permissions.organizations_create,
+        all_permissions.organizations_view,
+        all_permissions.organizations_change,
+        all_permissions.organizations_delete,
+        all_permissions.organizations_invite,
+        # Data views
+        all_permissions.views_view,
+        all_permissions.views_create,
+        all_permissions.views_change,
+        all_permissions.views_delete,
+        all_permissions.views_reset,
+        # Actions
+        all_permissions.actions_perform,
+        # Predictions / ML
+        all_permissions.predictions_any,
+        all_permissions.models_create,
+        all_permissions.models_view,
+        all_permissions.models_change,
+        all_permissions.models_delete,
+        all_permissions.model_provider_connection_create,
+        all_permissions.model_provider_connection_view,
+        all_permissions.model_provider_connection_change,
+        all_permissions.model_provider_connection_delete,
+        # Storages
+        all_permissions.storages_view,
+        all_permissions.storages_change,
+        all_permissions.storages_sync,
+        # Webhooks
+        all_permissions.webhooks_view,
+        all_permissions.webhooks_change,
+        # Avatar / token
+        all_permissions.avatar_any,
+        all_permissions.users_token_any,
+    },
+    'qa': {
+        # Can create/edit labeling templates
+        all_permissions.labels_create,
+        all_permissions.labels_view,
+        all_permissions.labels_change,
+        all_permissions.labels_delete,
+        # Can assign tasks
+        all_permissions.tasks_create,
+        all_permissions.tasks_view,
+        all_permissions.tasks_change,
+        # View all tasks + label tasks
+        all_permissions.annotations_create,
+        all_permissions.annotations_view,
+        all_permissions.annotations_change,
+        all_permissions.annotations_delete,
+        # Review / validate / approve / reject labels
+        # (covered by annotations_change + annotations_view)
+        # Export labeled data
+        all_permissions.actions_perform,
+        # Projects – view only (no create/edit/delete)
+        all_permissions.projects_view,
+        all_permissions.projects_change,  # needed for template editing within project
+        # Data views
+        all_permissions.views_view,
+        all_permissions.views_create,
+        all_permissions.views_change,
+        all_permissions.views_delete,
+        all_permissions.views_reset,
+        # Organizations – view only
+        all_permissions.organizations_view,
+        # Predictions / ML – view
+        all_permissions.predictions_any,
+        all_permissions.models_view,
+        all_permissions.model_provider_connection_view,
+        # Storages – view
+        all_permissions.storages_view,
+        # Webhooks – view
+        all_permissions.webhooks_view,
+        # Avatar / token
+        all_permissions.avatar_any,
+        all_permissions.users_token_any,
+    },
+    'labeller': {
+        # View all tasks
+        all_permissions.tasks_view,
+        # Label tasks (create annotations)
+        all_permissions.annotations_create,
+        all_permissions.annotations_view,
+        # Projects – view only
+        all_permissions.projects_view,
+        # Data views – view only
+        all_permissions.views_view,
+        # Organizations – view only
+        all_permissions.organizations_view,
+        # Predictions – view
+        all_permissions.predictions_any,
+        all_permissions.models_view,
+        all_permissions.model_provider_connection_view,
+        # Avatar / token
+        all_permissions.avatar_any,
+        all_permissions.users_token_any,
+    },
+}
+
+
+def role_has_permission(role: str, permission: str) -> bool:
+    """Check whether a given role has a specific permission."""
+    perms = ROLE_PERMISSIONS.get(role)
+    if perms is None:
+        return False
+    return permission in perms
 
 
 def make_perm(name, pred, overwrite=False):

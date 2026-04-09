@@ -1,11 +1,12 @@
 import { Button } from "@humansignal/ui";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUpdatePageTitle } from "@humansignal/core";
 import { HeidiTips } from "../../../components/HeidiTips/HeidiTips";
 import { modal } from "../../../components/Modal/Modal";
 import { Space } from "../../../components/Space/Space";
 import { cn } from "../../../utils/bem";
 import { FF_AUTH_TOKENS, FF_LSDV_E_297, isFF } from "../../../utils/feature-flags";
+import { useAPI } from "../../../providers/ApiProvider";
 import "./PeopleInvitation.scss";
 import { PeopleList } from "./PeopleList";
 import "./PeoplePage.scss";
@@ -16,17 +17,57 @@ import { InviteLink } from "./InviteLink";
 import { SelectedUser } from "./SelectedUser";
 
 export const PeoplePage = () => {
+  const api = useAPI();
   const apiSettingsModal = useRef();
   const toast = useToast();
   const [selectedUser, setSelectedUser] = useState(null);
   const [invitationOpen, setInvitationOpen] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useUpdatePageTitle("People");
+
+  const isAdmin = currentUserRole === "admin";
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const response = await api.callApi("currentUserRole");
+        if (response?.role) {
+          setCurrentUserRole(response.role);
+        }
+      } catch (e) {
+        // If endpoint not available, default to no role (read-only)
+      }
+    };
+    fetchRole();
+  }, []);
+
+  const handleRoleChange = useCallback(
+    async (member, newRole) => {
+      try {
+        await api.callApi("updateMemberRole", {
+          params: { pk: 1, userPk: member.user.id },
+          body: { role: newRole },
+        });
+        toast.show({ message: `Role updated to ${newRole}` });
+        // Refresh list so role column updates
+        setRefreshKey((k) => k + 1);
+        // Update the selected user's role in-place
+        if (selectedUser?.id === member.user.id) {
+          setSelectedUser((prev) => ({ ...prev, role: newRole }));
+        }
+      } catch (error) {
+        const detail = error?.response?.detail || error?.message || "Failed to update role";
+        toast.show({ message: detail, type: "error" });
+      }
+    },
+    [selectedUser],
+  );
 
   const selectUser = useCallback(
     (user) => {
       setSelectedUser(user);
-
       localStorage.setItem("selectedUser", user?.id);
     },
     [setSelectedUser],
@@ -84,10 +125,18 @@ export const PeoplePage = () => {
           selectedUser={selectedUser}
           defaultSelected={defaultSelected}
           onSelect={(user) => selectUser(user)}
+          isAdmin={isAdmin}
+          onRoleChange={handleRoleChange}
+          refreshKey={refreshKey}
         />
 
         {selectedUser ? (
-          <SelectedUser user={selectedUser} onClose={() => selectUser(null)} />
+          <SelectedUser
+            user={selectedUser}
+            onClose={() => selectUser(null)}
+            isAdmin={isAdmin}
+            onRoleChange={handleRoleChange}
+          />
         ) : (
           isFF(FF_LSDV_E_297) && <HeidiTips collection="organizationPage" />
         )}

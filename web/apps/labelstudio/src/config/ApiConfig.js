@@ -13,6 +13,8 @@ export const API_CONFIG = {
     // Organization
     memberships: "/organizations/:pk/memberships",
     userMemberships: "/organizations/:pk/memberships/:userPk",
+    updateMemberRole: "PATCH:/organizations/:pk/memberships/:userPk/",
+    currentUserRole: "GET:/current-user/role",
     inviteLink: "/invite",
     resetInviteLink: "POST:/invite/reset-token",
 
@@ -23,6 +25,9 @@ export const API_CONFIG = {
     createProject: "POST:/projects",
     deleteProject: "DELETE:/projects/:pk",
     projectResetCache: "POST:/projects/:pk/summary/reset",
+    projectMembers: "GET:/projects/:pk/members/",
+    addProjectMember: "POST:/projects/:pk/members/",
+    removeProjectMember: "DELETE:/projects/:pk/members/:userPk/",
 
     // Presigning
     presignUrlForTask: "/../tasks/:taskID/presign",

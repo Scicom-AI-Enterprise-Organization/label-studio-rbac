@@ -409,6 +409,25 @@ class ProjectReimportSerializer(serializers.ModelSerializer):
         ]
 
 
+class ProjectMemberSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+
+    class Meta:
+        from projects.models import ProjectMember
+
+        model = ProjectMember
+        fields = ['id', 'user', 'enabled', 'created_at']
+
+    def get_user(self, obj):
+        from users.serializers import UserSimpleSerializer
+
+        return UserSimpleSerializer(obj.user).data
+
+
+class ProjectMemberCreateSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField(help_text='User ID to add as project member')
+
+
 class ProjectModelVersionExtendedSerializer(serializers.Serializer):
     model_version = serializers.CharField()
     count = serializers.IntegerField()

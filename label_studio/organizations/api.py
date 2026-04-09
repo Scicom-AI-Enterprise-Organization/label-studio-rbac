@@ -17,6 +17,7 @@ from organizations.serializers import (
     OrganizationInviteSerializer,
     OrganizationMemberListParamsSerializer,
     OrganizationMemberListSerializer,
+    OrganizationMemberRoleSerializer,
     OrganizationMemberSerializer,
     OrganizationSerializer,
 )
@@ -33,8 +34,8 @@ from rest_framework.views import APIView
 from tasks.models import Annotation
 from users.models import User
 
-from label_studio.core.permissions import ViewClassPermission, all_permissions
-from label_studio.core.utils.params import bool_from_request
+from core.permissions import ViewClassPermission, all_permissions
+from core.utils.params import bool_from_request
 
 logger = logging.getLogger(__name__)
 
@@ -271,15 +272,16 @@ class OrganizationMemberDetailAPI(GetParentObjectMixin, generics.RetrieveDestroy
     permission_required = ViewClassPermission(
         GET=all_permissions.organizations_view,
         DELETE=all_permissions.organizations_change,
+        PATCH=all_permissions.organizations_change,
     )
     parent_queryset = Organization.objects.all()
     parser_classes = (JSONParser, FormParser, MultiPartParser)
     serializer_class = OrganizationMemberSerializer
-    http_method_names = ['delete', 'get']
+    http_method_names = ['delete', 'get', 'patch']
 
     @property
     def permission_classes(self):
-        if self.request.method == 'DELETE':
+        if self.request.method in ('DELETE', 'PATCH'):
             return [IsAuthenticated, HasObjectPermission]
         return api_settings.DEFAULT_PERMISSION_CLASSES
 
@@ -299,6 +301,48 @@ class OrganizationMemberDetailAPI(GetParentObjectMixin, generics.RetrieveDestroy
         self.check_object_permissions(request, member)
         serializer = self.get_serializer(member)
         return Response(serializer.data)
+
+    @extend_schema(
+        tags=['Organizations'],
+        summary='Update organization member role',
+        description='Update the role of an organization member. Only admins can change roles.',
+        request=OrganizationMemberRoleSerializer,
+        responses={200: OrganizationMemberSerializer()},
+        extensions={
+            'x-fern-sdk-group-name': ['organizations', 'members'],
+            'x-fern-sdk-method-name': 'update_role',
+            'x-fern-audiences': ['public'],
+        },
+    )
+    def patch(self, request, pk=None, user_pk=None):
+        org = self.parent_object
+        if org != request.user.active_organization:
+            raise PermissionDenied('You can update members only for your current active organization')
+
+        if not request.user.is_organization_admin():
+            raise PermissionDenied('Only admins can change member roles')
+
+        user = get_object_or_404(User, pk=user_pk)
+        member = get_object_or_404(OrganizationMember, user=user, organization=org, deleted_at__isnull=True)
+
+        # Prevent demoting yourself from admin (must always have at least one admin)
+        if member.user_id == request.user.id and request.data.get('role') != OrganizationMember.Role.ADMIN:
+            admin_count = OrganizationMember.objects.filter(
+                organization=org, role=OrganizationMember.Role.ADMIN, deleted_at__isnull=True
+            ).count()
+            if admin_count <= 1:
+                return Response(
+                    {'detail': 'Cannot change role: organization must have at least one admin.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        serializer = OrganizationMemberRoleSerializer(member, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        # Return full member detail
+        detail_serializer = self.get_serializer(member)
+        return Response(detail_serializer.data)
 
     def delete(self, request, pk=None, user_pk=None):
         org = self.parent_object
@@ -362,6 +406,43 @@ class OrganizationAPI(generics.RetrieveUpdateAPIView):
     @extend_schema(exclude=True)
     def put(self, request, *args, **kwargs):
         return super(OrganizationAPI, self).put(request, *args, **kwargs)
+
+
+class CurrentUserRoleAPI(APIView):
+    """Return the current user's role and permissions in their active organization."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['Organizations'],
+        summary='Get current user role',
+        description='Returns the role and allowed permissions for the currently authenticated user in their active organization.',
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'role': {'type': 'string', 'enum': ['admin', 'qa', 'labeller']},
+                    'permissions': {'type': 'array', 'items': {'type': 'string'}},
+                },
+            }
+        },
+        extensions={
+            'x-fern-sdk-group-name': 'organizations',
+            'x-fern-sdk-method-name': 'get_current_user_role',
+            'x-fern-audiences': ['public'],
+        },
+    )
+    def get(self, request, *args, **kwargs):
+        from core.permissions import ROLE_PERMISSIONS
+
+        role = request.user.get_organization_role()
+        if role is None:
+            return Response(
+                {'detail': 'User is not a member of any active organization.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        permissions = sorted(ROLE_PERMISSIONS.get(role, set()))
+        return Response({'role': role, 'permissions': permissions})
 
 
 @method_decorator(

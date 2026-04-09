@@ -35,6 +35,7 @@ urlpatterns = [
     path('models/', views.simple_view, name='models'),
     path('api/organizations/', include((_api_urlpattens, app_name), namespace='api')),
     # invite
+    path('api/current-user/role', api.CurrentUserRoleAPI.as_view(), name='current-user-role'),
     path('api/invite', api.OrganizationInviteAPI.as_view(), name='organization-invite'),
     path('api/invite/reset-token', api.OrganizationResetTokenAPI.as_view(), name='organization-reset-token'),
 ]

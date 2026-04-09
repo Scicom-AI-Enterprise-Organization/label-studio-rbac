@@ -30,12 +30,14 @@ from ml.serializers import MLBackendSerializer
 from projects.functions.next_task import get_next_task
 from projects.functions.stream_history import get_label_stream_history
 from projects.functions.utils import recalculate_created_annotations_and_labels_from_scratch
-from projects.models import Project, ProjectImport, ProjectManager, ProjectReimport, ProjectSummary
+from projects.models import Project, ProjectImport, ProjectManager, ProjectMember, ProjectReimport, ProjectSummary
 from projects.serializers import (
     GetFieldsSerializer,
     ProjectCountsSerializer,
     ProjectImportSerializer,
     ProjectLabelConfigSerializer,
+    ProjectMemberCreateSerializer,
+    ProjectMemberSerializer,
     ProjectModelVersionExtendedSerializer,
     ProjectModelVersionParamsSerializer,
     ProjectReimportSerializer,
@@ -183,6 +185,12 @@ class ProjectListAPI(generics.ListCreateAPIView):
         projects = Project.objects.filter(organization=self.request.user.active_organization).order_by(
             F('pinned_at').desc(nulls_last=True), '-created_at'
         )
+
+        # Labellers only see projects they are assigned to
+        role = self.request.user.get_organization_role()
+        if role == 'labeller':
+            projects = projects.filter(members__user=self.request.user, members__enabled=True)
+
         if filter in ['pinned_only', 'exclude_pinned']:
             projects = projects.filter(pinned_at__isnull=filter == 'exclude_pinned')
         projects = ProjectManager.with_counts_annotate(projects, fields=fields)
@@ -930,3 +938,64 @@ class ProjectAnnotatorsAPI(generics.RetrieveAPIView):
         users = User.objects.filter(id__in=annotator_ids).prefetch_related('om_through').order_by('id')
         data = UserSimpleSerializer(users, many=True, context={'request': request}).data
         return Response(data)
+
+
+class ProjectMemberListAPI(generics.ListCreateAPIView):
+    """List and add members to a project. Admin only."""
+
+    permission_required = ViewClassPermission(
+        GET=all_permissions.projects_change,
+        POST=all_permissions.projects_change,
+    )
+    serializer_class = ProjectMemberSerializer
+
+    def get_project(self):
+        return generics.get_object_or_404(Project, pk=self.kwargs['pk'])
+
+    def get_queryset(self):
+        project = self.get_project()
+        return ProjectMember.objects.filter(project=project).select_related('user').order_by('created_at')
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        project = self.get_project()
+        serializer = ProjectMemberCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user_id = serializer.validated_data['user_id']
+        user = generics.get_object_or_404(User, pk=user_id)
+
+        # Verify the user belongs to the same organization
+        from organizations.models import OrganizationMember
+
+        if not OrganizationMember.objects.filter(
+            user=user, organization=project.organization, deleted_at__isnull=True
+        ).exists():
+            return Response(
+                {'detail': 'User is not a member of this organization.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        member, created = ProjectMember.objects.get_or_create(user=user, project=project, defaults={'enabled': True})
+        if not created and not member.enabled:
+            member.enabled = True
+            member.save(update_fields=['enabled'])
+
+        return Response(ProjectMemberSerializer(member).data, status=status.HTTP_201_CREATED)
+
+
+class ProjectMemberDetailAPI(generics.DestroyAPIView):
+    """Remove a member from a project. Admin only."""
+
+    permission_required = all_permissions.projects_change
+
+    def get_project(self):
+        return generics.get_object_or_404(Project, pk=self.kwargs['pk'])
+
+    def delete(self, request, pk, user_pk):
+        project = self.get_project()
+        member = generics.get_object_or_404(ProjectMember, project=project, user_id=user_pk)
+        member.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
