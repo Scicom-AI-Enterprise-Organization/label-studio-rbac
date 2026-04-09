@@ -233,6 +233,19 @@ This fork adds a built-in RBAC system with three roles:
 5. QA clicks **Accept** or **Reject** (with a required comment for rejection)
 6. Labellers and Admins see the review status badge when viewing a task, including any QA comments
 
+### Updating reviewed annotations
+
+When a Labeller or Admin updates an annotation that has already been reviewed:
+
+- **Accepted annotations**: A confirmation dialog asks whether to proceed. If confirmed, the review status resets to **Pending** and the annotation goes back through the review workflow.
+- **Rejected annotations**: The update proceeds immediately (no confirmation needed) and the review status resets to **Pending** automatically.
+
+This ensures that any changes made after a review always get re-reviewed by QA.
+
+### QA draft behavior
+
+QA users do not create or save drafts. Since QA reviews annotations rather than authoring them, all draft-related functionality (autosave, navigation draft saves, and draft guard prompts) is disabled for QA users.
+
 ## What you get from Label Studio
 
 https://github.com/user-attachments/assets/525ad5ff-6904-4398-b507-7e8954268d69

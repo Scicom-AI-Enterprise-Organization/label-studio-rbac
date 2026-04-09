@@ -655,6 +655,16 @@ class AnnotationAPI(generics.RetrieveUpdateDestroyAPIView):
         # use updated instead of save to avoid duplicated signals
         Annotation.objects.filter(id=annotation.id).update(updated_by=request.user)
 
+        # If annotation was reviewed (accepted or rejected), reset review status
+        # back to pending so it goes through the review workflow again
+        if annotation.review_status in (Annotation.REVIEW_ACCEPTED, Annotation.REVIEW_REJECTED):
+            Annotation.objects.filter(id=annotation.id).update(
+                review_status=Annotation.REVIEW_PENDING,
+                review_comment=None,
+                reviewed_by=None,
+                reviewed_at=None,
+            )
+
         task = annotation.task
         if self.request.data.get('ground_truth'):
             task.ensure_unique_groundtruth(annotation_id=annotation.id)

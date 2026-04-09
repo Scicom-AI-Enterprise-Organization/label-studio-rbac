@@ -33,6 +33,11 @@ export const DraftGuard = () => {
       const hasChanges = !!selected?.history.undoIdx && !submissionInProgress;
 
       if (hasChanges) {
+        // QA users don't save drafts — skip draft guard and allow navigation
+        if (window.APP_SETTINGS?.user?.role === "qa") {
+          return;
+        }
+
         selected.saveDraftImmediatelyWithResults()?.then((res) => {
           const status = res?.$meta?.status;
 

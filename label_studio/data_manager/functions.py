@@ -123,6 +123,15 @@ def get_all_columns(project, *_):
             'project_defined': False,
         },
         {
+            'id': 'reviewed',
+            'title': 'Reviewed',
+            'type': 'String',
+            'target': 'tasks',
+            'help': 'Review status: accepted, rejected, or false',
+            'visibility_defaults': {'explore': True, 'labeling': False},
+            'project_defined': False,
+        },
+        {
             'id': 'total_annotations',
             'title': 'Annotations',
             'type': 'Number',

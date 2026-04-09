@@ -867,6 +867,19 @@ export class LSFWrapper {
   /** @private */
   onUpdateAnnotation = async (ls, annotation, extraData) => {
     const { task } = this;
+
+    // Check if this annotation was previously accepted — warn user that updating
+    // will reset the review status back to pending
+    const rawAnnotation = task.annotations?.find((a) => String(a.id) === String(annotation.pk));
+    if (rawAnnotation?.review_status === "accepted") {
+      const confirmed = window.confirm(
+        "This annotation has already been accepted by a reviewer. " +
+        "Updating it will reset the review status and send it back for review. " +
+        "Do you want to continue?"
+      );
+      if (!confirmed) return;
+    }
+
     const serializedAnnotation = this.prepareData(annotation);
     const exitStream = this.shouldExitStream();
 
@@ -973,6 +986,9 @@ export class LSFWrapper {
   };
 
   saveDraft = async (target = null) => {
+    // QA users don't create drafts — they only review annotations
+    if (window.APP_SETTINGS?.user?.role === "qa") return;
+
     const selected = target || this.lsf?.annotationStore?.selected;
     const hasChanges = selected ? this.needsDraftSave(selected) : false;
 
@@ -987,6 +1003,9 @@ export class LSFWrapper {
   };
 
   onSubmitDraft = async (_studio, annotation, params = {}) => {
+    // QA users don't create drafts — they only review annotations
+    if (window.APP_SETTINGS?.user?.role === "qa") return {};
+
     // It should be preserved as soon as possible because each `await` will allow it to be changed
     const taskId = this.task.id;
     const annotationDoesntExist = !annotation.pk;

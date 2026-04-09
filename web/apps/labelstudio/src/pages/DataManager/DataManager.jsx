@@ -82,7 +82,13 @@ export const DataManagerPage = ({ ...props }) => {
   useEffect(() => {
     const fetchRole = async () => {
       const response = await api.callApi("currentUserRole");
-      if (response?.role) setUserRole(response.role);
+      if (response?.role) {
+        setUserRole(response.role);
+        // Store role globally so lsf-sdk can access it for role-based behavior
+        if (window.APP_SETTINGS?.user) {
+          window.APP_SETTINGS.user.role = response.role;
+        }
+      }
     };
     fetchRole();
   }, []);

@@ -622,6 +622,35 @@ def annotated_completed_at_considering_agreement_threshold(queryset):
     return queryset.annotate(completed_at=completed_at_case)
 
 
+def annotate_reviewed(queryset: TaskQuerySet) -> TaskQuerySet:
+    from tasks.models import Annotation
+
+    return queryset.annotate(
+        reviewed=Case(
+            When(
+                Exists(
+                    Annotation.objects.filter(
+                        task=OuterRef('pk'),
+                        review_status='accepted',
+                    )
+                ),
+                then=Value('accepted'),
+            ),
+            When(
+                Exists(
+                    Annotation.objects.filter(
+                        task=OuterRef('pk'),
+                        review_status='rejected',
+                    )
+                ),
+                then=Value('rejected'),
+            ),
+            default=Value('false'),
+            output_field=models.CharField(),
+        )
+    )
+
+
 def annotate_storage_filename(queryset: TaskQuerySet) -> TaskQuerySet:
     from label_studio.data_manager.functions import intersperse
 
@@ -749,6 +778,7 @@ def annotate_state(queryset):
 settings.DATA_MANAGER_ANNOTATIONS_MAP = {
     'avg_lead_time': annotate_avg_lead_time,
     'completed_at': annotate_completed_at,
+    'reviewed': annotate_reviewed,
     'annotations_results': annotate_annotations_results,
     'predictions_results': annotate_predictions_results,
     'predictions_model_versions': annotate_predictions_model_versions,

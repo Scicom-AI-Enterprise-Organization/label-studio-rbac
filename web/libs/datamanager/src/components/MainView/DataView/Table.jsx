@@ -305,6 +305,7 @@ export const DataView = injector(
         commonDecoration("cancelled_annotations", 60, "center"),
         commonDecoration("total_predictions", 60, "center"),
         commonDecoration("completed_at", 180, "space-between", true),
+        commonDecoration("reviewed", 120, "center"),
         commonDecoration("reviews_accepted", 60, "center"),
         commonDecoration("reviews_rejected", 60, "center"),
         commonDecoration("ground_truth", 60, "center"),

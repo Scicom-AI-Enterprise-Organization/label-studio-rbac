@@ -449,6 +449,7 @@ class DataManagerTaskSerializer(TaskSerializer):
     total_annotations = serializers.IntegerField(required=False)
     total_predictions = serializers.IntegerField(required=False)
     completed_at = serializers.DateTimeField(required=False)
+    reviewed = serializers.CharField(required=False)
     annotations_results = serializers.SerializerMethodField(required=False)
     predictions_results = serializers.SerializerMethodField(required=False)
     predictions_score = serializers.FloatField(required=False)
