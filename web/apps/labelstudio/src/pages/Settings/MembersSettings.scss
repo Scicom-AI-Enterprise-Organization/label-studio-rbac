@@ -60,7 +60,8 @@
     font-size: 0.75rem;
     font-weight: 500;
 
-    &_labeller {
+    &_labeller,
+    &_qa {
       background: var(--color-neutral-surface-inset);
       color: var(--color-neutral-content);
     }

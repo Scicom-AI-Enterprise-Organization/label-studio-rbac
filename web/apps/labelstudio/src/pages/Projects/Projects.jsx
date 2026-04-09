@@ -31,6 +31,7 @@ export const ProjectsPage = () => {
 
   const [userRole, setUserRole] = useState(null);
   const isLabeller = userRole === "labeller";
+  const isAdmin = userRole === "admin";
 
   useUpdatePageTitle("Projects");
   const defaultPageSize = Number.parseInt(localStorage.getItem("pages:projects-list") ?? 30);
@@ -126,7 +127,7 @@ export const ProjectsPage = () => {
   React.useEffect(() => {
     // there is a nice page with Create button when list is empty
     // so don't show the context button in that case
-    setContextProps({ openModal, showButton: projectsList.length > 0 && !isLabeller });
+    setContextProps({ openModal, showButton: projectsList.length > 0 && isAdmin });
   }, [projectsList.length]);
 
   return (
@@ -145,7 +146,7 @@ export const ProjectsPage = () => {
               pageSize={defaultPageSize}
             />
           ) : (
-            <EmptyProjectsList openModal={openModal} isLabeller={isLabeller} />
+            <EmptyProjectsList openModal={openModal} isLabeller={!isAdmin} />
           )}
           {modal && <CreateProject onClose={closeModal} />}
         </div>

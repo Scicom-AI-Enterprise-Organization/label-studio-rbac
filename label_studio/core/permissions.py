@@ -139,43 +139,27 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         all_permissions.users_token_any,
     },
     'qa': {
-        # Can create/edit labeling templates
-        all_permissions.labels_create,
-        all_permissions.labels_view,
-        all_permissions.labels_change,
-        all_permissions.labels_delete,
-        # Can assign tasks
-        all_permissions.tasks_create,
+        # View tasks
         all_permissions.tasks_view,
-        all_permissions.tasks_change,
-        # View all tasks + label tasks
-        all_permissions.annotations_create,
+        # Review / approve / reject annotations (no creating new annotations)
         all_permissions.annotations_view,
         all_permissions.annotations_change,
         all_permissions.annotations_delete,
-        # Review / validate / approve / reject labels
-        # (covered by annotations_change + annotations_view)
-        # Export labeled data
-        all_permissions.actions_perform,
-        # Projects – view only (no create/edit/delete)
+        # Labels – view only
+        all_permissions.labels_view,
+        # Projects – view only + change for member assignment
         all_permissions.projects_view,
-        all_permissions.projects_change,  # needed for template editing within project
-        # Data views
+        all_permissions.projects_change,
+        # Data views – view + create (Data Manager needs these)
         all_permissions.views_view,
         all_permissions.views_create,
         all_permissions.views_change,
-        all_permissions.views_delete,
-        all_permissions.views_reset,
-        # Organizations – view only
+        # Organizations – view only (needed for account settings / JWT)
         all_permissions.organizations_view,
         # Predictions / ML – view
         all_permissions.predictions_any,
         all_permissions.models_view,
         all_permissions.model_provider_connection_view,
-        # Storages – view
-        all_permissions.storages_view,
-        # Webhooks – view
-        all_permissions.webhooks_view,
         # Avatar / token
         all_permissions.avatar_any,
         all_permissions.users_token_any,
@@ -183,9 +167,10 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
     'labeller': {
         # View all tasks
         all_permissions.tasks_view,
-        # Label tasks (create annotations)
+        # Label tasks (create + update annotations)
         all_permissions.annotations_create,
         all_permissions.annotations_view,
+        all_permissions.annotations_change,
         # Projects – view only
         all_permissions.projects_view,
         # Labels – view only (needed for label links in labeling interface)

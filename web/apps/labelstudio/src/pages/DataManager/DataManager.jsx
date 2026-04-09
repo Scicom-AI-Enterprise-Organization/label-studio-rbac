@@ -15,6 +15,8 @@ import { ImportModal } from "../CreateProject/Import/ImportModal";
 import { ExportPage } from "../ExportPage/ExportPage";
 import { APIConfig } from "./api-config";
 
+import { ReviewBadge } from "./ReviewBadge";
+import { ReviewPanel } from "./ReviewPanel";
 import "./DataManager.scss";
 
 const loadDependencies = () => [import("@humansignal/datamanager"), import("@humansignal/editor")];
@@ -37,14 +39,19 @@ const initializeDataManager = async (root, props, params) => {
     showPreviews: false,
     apiEndpoints: APIConfig.endpoints,
     interfaces: {
-      import: !params.isLabeller,
-      export: !params.isLabeller,
+      import: params.isAdmin,
+      export: params.isAdmin,
       backButton: false,
       labelingHeader: false,
       autoAnnotation: params.autoAnnotation,
     },
     labelStudio: {
       keymap: window.APP_SETTINGS.editor_keymap,
+      ...(params.isQA ? {
+        interfacesModifier: (interfaces) => {
+          return interfaces.filter((i) => !["submit", "update", "edit-history", "annotations:add-new", "annotations:delete", "skip"].includes(i));
+        },
+      } : {}),
     },
     ...props,
     ...settings,
@@ -101,6 +108,8 @@ export const DataManagerPage = ({ ...props }) => {
         project,
         autoAnnotation: isDefined(interactiveBacked),
         isLabeller: userRole === "labeller",
+        isAdmin: userRole === "admin",
+        isQA: userRole === "qa",
       })));
 
     Object.assign(window, { dataManager });
@@ -255,7 +264,9 @@ export const DataManagerPage = ({ ...props }) => {
         </div>
       )}
       {/* Allow this to exist before the DataManager is initialized as the async app.fetchData call eventually calls startLabeling, and that requires the root element to exist */}
-      <div ref={root} className={cn("datamanager").toClassName()} />
+      <div ref={root} className={`${cn("datamanager").toClassName()}${userRole === "qa" ? " dm-readonly" : ""}`} />
+      {userRole === "qa" && <ReviewPanel projectId={projectId} />}
+      {(userRole === "labeller" || userRole === "admin") && <ReviewBadge />}
     </>
   );
 };
@@ -279,11 +290,11 @@ DataManagerPage.context = ({ dmRef }) => {
     fetchRole();
   }, []);
 
-  const isLabeller = userRole === "labeller";
+  const isAdmin = userRole === "admin";
 
-  const links = isLabeller ? {} : {
+  const links = isAdmin ? {
     "/settings": "Settings",
-  };
+  } : {};
 
   const updateCrumbs = (currentMode) => {
     const isExplorer = currentMode === "explorer";

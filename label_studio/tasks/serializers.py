@@ -206,6 +206,26 @@ class AnnotationSerializer(FlexFieldsModelSerializer):
         expandable_fields = {'completed_by': (CompletedByDMSerializer,)}
 
 
+class AnnotationReviewSerializer(serializers.Serializer):
+    """Serializer for QA review of an annotation."""
+
+    status = serializers.ChoiceField(
+        choices=[Annotation.REVIEW_ACCEPTED, Annotation.REVIEW_REJECTED],
+        help_text='Review status: accepted or rejected',
+    )
+    comment = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default='',
+        help_text='Review comment (required when rejecting)',
+    )
+
+    def validate(self, data):
+        if data['status'] == Annotation.REVIEW_REJECTED and not data.get('comment', '').strip():
+            raise serializers.ValidationError({'comment': 'Comment is required when rejecting an annotation.'})
+        return data
+
+
 class AnnotationStubSerializer(FlexFieldsModelSerializer):
     """
     Lightweight Annotation Serializer for lazy loading.

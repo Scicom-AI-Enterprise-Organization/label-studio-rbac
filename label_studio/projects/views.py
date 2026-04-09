@@ -15,6 +15,9 @@ def project_list(request):
 
 @login_required
 def project_settings(request, pk, sub_path):
-    if request.user.get_organization_role() == 'labeller':
+    role = request.user.get_organization_role()
+    if role == 'labeller':
         return redirect(f'/projects/{pk}/data')
+    if role == 'qa' and sub_path != 'members':
+        return redirect(f'/projects/{pk}/settings/members')
     return render(request, 'projects/settings.html')

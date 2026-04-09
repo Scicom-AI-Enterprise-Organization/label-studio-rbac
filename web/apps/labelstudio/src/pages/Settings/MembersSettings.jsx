@@ -34,9 +34,9 @@ export const MembersSettings = () => {
     ]);
 
     if (membersRes?.results) {
-      // Only show labellers — admins and QA already have access to all projects
-      const labellers = membersRes.results.filter((m) => m.role === "labeller");
-      setOrgMembers(labellers);
+      // Show labellers and QA — admins already have access to all projects
+      const assignable = membersRes.results.filter((m) => m.role === "labeller" || m.role === "qa");
+      setOrgMembers(assignable);
     }
 
     if (Array.isArray(projectMembersRes)) {
@@ -96,8 +96,8 @@ export const MembersSettings = () => {
     <div className={cn("members-settings").toClassName()}>
       <h1>Members</h1>
       <p className="settings-description">
-        Assign labellers to this project. Only assigned labellers will be able to see and work on this project.
-        Admins and QA supervisors have access to all projects automatically.
+        Assign members to this project. Only assigned labellers and QA supervisors will be able to see and work on this project.
+        Admins have access to all projects automatically.
       </p>
       <div className={cn("settings-wrapper").toClassName()} style={{ marginTop: 24 }}>
         {orgMembers && orgMembers.length > 0 ? (

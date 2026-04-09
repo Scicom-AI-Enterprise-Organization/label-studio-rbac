@@ -249,7 +249,7 @@ export const Menubar = ({ enabled, defaultOpened, defaultPinned, children, onSid
               <Menu>
                 {isFF(FF_HOMEPAGE) && <Menu.Item label="Home" to="/" icon={<IconHome />} data-external exact />}
                 <Menu.Item label="Projects" to="/projects" icon={<IconFolder />} data-external exact />
-                {userRole !== "labeller" && (
+                {userRole === "admin" && (
                   <Menu.Item label="Organization" to="/organization" icon={<IconPeople />} data-external exact />
                 )}
 

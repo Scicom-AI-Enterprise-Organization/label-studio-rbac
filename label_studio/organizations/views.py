@@ -6,13 +6,13 @@ from django.shortcuts import redirect, render
 
 @login_required
 def organization_people_list(request):
-    if request.user.get_organization_role() == 'labeller':
+    if request.user.get_organization_role() in ('labeller', 'qa'):
         return redirect('/projects')
     return render(request, 'organizations/people_list.html')
 
 
 @login_required
 def simple_view(request):
-    if request.user.get_organization_role() == 'labeller':
+    if request.user.get_organization_role() in ('labeller', 'qa'):
         return redirect('/projects')
     return render(request, 'organizations/people_list.html')

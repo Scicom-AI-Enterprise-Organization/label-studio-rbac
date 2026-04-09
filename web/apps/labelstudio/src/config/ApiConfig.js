@@ -25,6 +25,8 @@ export const API_CONFIG = {
     createProject: "POST:/projects",
     deleteProject: "DELETE:/projects/:pk",
     projectResetCache: "POST:/projects/:pk/summary/reset",
+    annotations: "GET:/tasks/:pk/annotations/",
+    reviewAnnotation: "POST:/annotations/:pk/review",
     projectMembers: "GET:/projects/:pk/members/",
     addProjectMember: "POST:/projects/:pk/members/",
     removeProjectMember: "DELETE:/projects/:pk/members/:userPk/",

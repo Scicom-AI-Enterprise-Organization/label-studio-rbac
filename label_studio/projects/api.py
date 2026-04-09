@@ -186,9 +186,9 @@ class ProjectListAPI(generics.ListCreateAPIView):
             F('pinned_at').desc(nulls_last=True), '-created_at'
         )
 
-        # Labellers only see projects they are assigned to
+        # Labellers and QA only see projects they are assigned to
         role = self.request.user.get_organization_role()
-        if role == 'labeller':
+        if role in ('labeller', 'qa'):
             projects = projects.filter(members__user=self.request.user, members__enabled=True)
 
         if filter in ['pinned_only', 'exclude_pinned']:

@@ -692,6 +692,47 @@ class Annotation(AnnotationMixin, FsmHistoryStateModel):
         null=True,
         help_text='Points to the parent annotation from which this annotation was created',
     )
+
+    # --- Review fields (QA workflow) ---
+    REVIEW_PENDING = 'pending'
+    REVIEW_ACCEPTED = 'accepted'
+    REVIEW_REJECTED = 'rejected'
+    REVIEW_STATUS_CHOICES = [
+        (REVIEW_PENDING, _('Pending')),
+        (REVIEW_ACCEPTED, _('Accepted')),
+        (REVIEW_REJECTED, _('Rejected')),
+    ]
+    review_status = models.CharField(
+        _('review status'),
+        max_length=16,
+        choices=REVIEW_STATUS_CHOICES,
+        default=REVIEW_PENDING,
+        help_text='QA review status: pending, accepted, or rejected',
+    )
+    review_comment = models.TextField(
+        _('review comment'),
+        null=True,
+        blank=True,
+        default=None,
+        help_text='QA review comment (required on rejection)',
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='reviewed_annotations',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        default=None,
+        help_text='QA user who reviewed this annotation',
+    )
+    reviewed_at = models.DateTimeField(
+        _('reviewed at'),
+        null=True,
+        blank=True,
+        default=None,
+        help_text='When the annotation was reviewed',
+    )
+
     unique_id = models.UUIDField(default=uuid.uuid4, null=True, blank=True, unique=True, editable=False)
     import_id = models.BigIntegerField(
         default=None,

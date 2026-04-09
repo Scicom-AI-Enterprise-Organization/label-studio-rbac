@@ -195,15 +195,17 @@ This fork adds a built-in RBAC system with three roles:
 
 | Role | Description |
 |-|-|
-| **Admin** | Full access. Can create projects, import/export data, manage organization members, assign roles, and configure project settings. |
-| **QA (Supervisor)** | Can view all projects, manage labels and annotations, review/approve/reject work, and export data. Cannot create or delete projects or manage organization members. |
+| **Admin** | Full access. Can create projects, import/export data, manage organization members, assign roles, and configure all project settings. |
+| **QA (Supervisor)** | Reviews annotations submitted by labellers. Can accept or reject annotations with comments. Can assign members to projects. Cannot create projects, import/export data, label tasks, or access the organization page. QA must be assigned to projects to see them. |
 | **Labeller** | Can only view and label tasks in projects they are assigned to. Cannot create projects, import/export data, access organization settings, or modify project settings. |
 
 ### Key features
 
 - **Role assignment**: Admins can assign roles (Admin, QA, Labeller) to organization members from the Organization page.
-- **Project-level access control**: Admins can assign labellers to specific projects via the **Members** tab in project settings. Labellers only see projects they are assigned to.
-- **UI restrictions**: The interface adapts based on the user's role -- labellers see a simplified UI without create/import/export/settings controls.
+- **Project-level access control**: Admins and QA can assign members to specific projects via the **Members** tab in project settings. Both QA and Labellers must be assigned to a project to see it.
+- **QA review workflow**: QA users can accept or reject each annotation with an optional comment (required for rejection). The review status is stored per annotation.
+- **Review status visibility**: When viewing a task, Admin and Labeller users see a review status panel showing whether each annotation has been accepted, rejected, or is pending review, along with any QA comments.
+- **UI restrictions**: The interface adapts based on the user's role -- non-admin users see a simplified UI without create/import/export controls. QA users see a read-only labeling view with a review panel.
 - **Role indicator**: The current user's role is displayed next to the avatar in the top-right corner of the header.
 
 ### Role permissions summary
@@ -211,14 +213,25 @@ This fork adds a built-in RBAC system with three roles:
 | Action | Admin | QA | Labeller |
 |-|-|-|-|
 | Create/delete projects | Yes | No | No |
-| Import/export data | Yes | Yes | No |
-| Project settings | Yes | Yes | No |
-| Assign members to projects | Yes | No | No |
-| View organization page | Yes | Yes | No |
+| Import/export data | Yes | No | No |
+| Full project settings | Yes | No | No |
+| Assign members to projects | Yes | Yes | No |
+| View organization page | Yes | No | No |
 | Manage member roles | Yes | No | No |
-| View assigned projects | Yes | Yes | Assigned only |
-| Label tasks | Yes | Yes | Yes |
-| Review annotations | Yes | Yes | No |
+| View projects | All | Assigned only | Assigned only |
+| Label tasks | Yes | No | Yes |
+| Update own annotations | Yes | No | Yes |
+| Review annotations (accept/reject) | Yes | Yes | No |
+| View review status | Yes | Read-only | Read-only |
+
+### QA review workflow
+
+1. Admin creates a project, imports data, and assigns QA and Labellers via **Settings > Members**
+2. Labellers open assigned projects, label tasks, and submit annotations
+3. QA opens assigned projects and clicks on tasks to review annotations
+4. QA sees a read-only view of the labeling interface with a **Review panel** in the bottom-right
+5. QA clicks **Accept** or **Reject** (with a required comment for rejection)
+6. Labellers and Admins see the review status badge when viewing a task, including any QA comments
 
 ## What you get from Label Studio
 

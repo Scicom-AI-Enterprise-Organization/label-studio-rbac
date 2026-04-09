@@ -34,8 +34,10 @@ from tasks.openapi_schema import (
     task_request_schema,
     task_response_example,
 )
+from rest_framework import status
 from tasks.serializers import (
     AnnotationDraftSerializer,
+    AnnotationReviewSerializer,
     AnnotationSerializer,
     PredictionSerializer,
     TaskSerializer,
@@ -1101,3 +1103,31 @@ class AnnotationConvertAPI(generics.RetrieveAPIView):
         emit_webhooks_for_instance(organization, project, WebhookAction.ANNOTATIONS_DELETED, [pk])
         data = AnnotationDraftSerializer(instance=draft).data
         return Response(status=201, data=data)
+
+
+class AnnotationReviewAPI(generics.GenericAPIView):
+    """Submit a review (accept/reject) for an annotation. QA and Admin only."""
+
+    permission_required = all_permissions.annotations_change
+    serializer_class = AnnotationReviewSerializer
+    queryset = Annotation.objects.all()
+
+    def post(self, request, pk):
+        annotation = self.get_object()
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        annotation.review_status = serializer.validated_data['status']
+        annotation.review_comment = serializer.validated_data.get('comment', '')
+        annotation.reviewed_by = request.user
+        annotation.reviewed_at = timezone.now()
+        annotation.save(update_fields=['review_status', 'review_comment', 'reviewed_by', 'reviewed_at'])
+
+        return Response({
+            'id': annotation.id,
+            'review_status': annotation.review_status,
+            'review_comment': annotation.review_comment,
+            'reviewed_by': annotation.reviewed_by_id,
+            'reviewed_at': annotation.reviewed_at.isoformat(),
+        }, status=status.HTTP_200_OK)

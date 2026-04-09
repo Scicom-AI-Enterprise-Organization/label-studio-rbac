@@ -70,6 +70,7 @@ export const HomePage: Page = () => {
 
   const [userRole, setUserRole] = useState<string | null>(null);
   const isLabeller = userRole === "labeller";
+  const isAdmin = userRole === "admin";
 
   useUpdatePageTitle("Home");
 
@@ -155,7 +156,7 @@ export const HomePage: Page = () => {
               Let's get you started.
             </Typography>
           </div>
-          {!isLabeller && (
+          {isAdmin && (
             <div className="flex justify-start gap-4">
               {actions.map((action) => {
                 return (
@@ -202,14 +203,14 @@ export const HomePage: Page = () => {
                   <IconFolderOpen />
                 </div>
                 <Typography variant="headline" size="small">
-                  {isLabeller ? "No projects assigned" : "Create your first project"}
+                  {!isAdmin ? "No projects available" : "Create your first project"}
                 </Typography>
                 <Typography size="small" className="text-neutral-content-subtler">
-                  {isLabeller
+                  {!isAdmin
                     ? "Please contact your admin to get assigned to a project"
                     : "Import your data and set up the labeling interface to start annotating"}
                 </Typography>
-                {!isLabeller && (
+                {isAdmin && (
                   <Button className="mt-4" onClick={() => setModalIsOpen(true)} aria-label="Create new project">
                     Create Project
                   </Button>

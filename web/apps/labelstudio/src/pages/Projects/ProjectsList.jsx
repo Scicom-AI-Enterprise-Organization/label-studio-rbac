@@ -25,12 +25,13 @@ export const ProjectsList = ({ projects, currentPage, totalItems, loadNextPage, 
   }, []);
 
   const isLabeller = userRole === "labeller";
+  const isAdmin = userRole === "admin";
 
   return (
     <>
       <div className={cn("projects-page").elem("list").toClassName()}>
         {projects.map((project) => (
-          <ProjectCard key={project.id} project={project} isLabeller={isLabeller} />
+          <ProjectCard key={project.id} project={project} isLabeller={isLabeller} isAdmin={isAdmin} userRole={userRole} />
         ))}
       </div>
       <div className={cn("projects-page").elem("pages").toClassName()}>
@@ -75,7 +76,7 @@ export const EmptyProjectsList = ({ openModal, isLabeller }) => {
   );
 };
 
-const ProjectCard = ({ project, isLabeller }) => {
+const ProjectCard = ({ project, isLabeller, isAdmin, userRole }) => {
   const color = useMemo(() => {
     return DEFAULT_CARD_COLORS.includes(project.color) ? null : project.color;
   }, [project]);
@@ -123,8 +124,9 @@ const ProjectCard = ({ project, isLabeller }) => {
                 <Dropdown.Trigger
                   content={
                     <Menu contextual>
-                      <Menu.Item href={`/projects/${project.id}/settings`}>Settings</Menu.Item>
-                      <Menu.Item href={`/projects/${project.id}/data?labeling=1`}>Label</Menu.Item>
+                      {isAdmin && <Menu.Item href={`/projects/${project.id}/settings`}>Settings</Menu.Item>}
+                      {userRole === "qa" && <Menu.Item href={`/projects/${project.id}/settings/members`}>Members</Menu.Item>}
+                      {isAdmin && <Menu.Item href={`/projects/${project.id}/data?labeling=1`}>Label</Menu.Item>}
                     </Menu>
                   }
                 >
