@@ -36,29 +36,17 @@ export const MembershipInfo = () => {
 
       const annotationCount = response?.annotations_count;
       const contributions = response?.contributed_projects_count;
-      let role = "Owner";
+      let role = response.role ?? "Unknown";
 
       switch (response.role) {
-        case "OW":
-          role = "Owner";
-          break;
-        case "DI":
-          role = "Deactivated";
-          break;
-        case "AD":
+        case "admin":
           role = "Administrator";
           break;
-        case "MA":
-          role = "Manager";
+        case "qa":
+          role = "QA";
           break;
-        case "AN":
-          role = "Annotator";
-          break;
-        case "RE":
-          role = "Reviewer";
-          break;
-        case "NO":
-          role = "Pending";
+        case "labeller":
+          role = "Labeller";
           break;
       }
 

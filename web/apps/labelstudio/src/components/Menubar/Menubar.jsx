@@ -1,4 +1,5 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAPI } from "../../providers/ApiProvider";
 import { StaticContent } from "../../app/StaticContent/StaticContent";
 import {
   IconBook,
@@ -54,11 +55,19 @@ const RightContextMenu = ({ className, ...props }) => {
   );
 };
 
+const ROLE_LABELS = {
+  admin: "Admin",
+  qa: "QA",
+  labeller: "Labeller",
+};
+
 export const Menubar = ({ enabled, defaultOpened, defaultPinned, children, onSidebarToggle, onSidebarPin }) => {
   const menuDropdownRef = useRef();
   const useMenuRef = useRef();
   const { user, isLoading } = useAuth();
   const location = useFixedLocation();
+  const [userRole, setUserRole] = useState(null);
+  const api = useAPI();
 
   const config = useConfig();
   const [sidebarOpened, setSidebarOpened] = useState(defaultOpened ?? false);
@@ -133,6 +142,16 @@ export const Menubar = ({ enabled, defaultOpened, defaultPinned, children, onSid
     useMenuRef?.current?.close();
   }, [location]);
 
+  useEffect(() => {
+    const fetchRole = async () => {
+      const response = await api.callApi("currentUserRole");
+      if (response?.role) {
+        setUserRole(response.role);
+      }
+    };
+    fetchRole();
+  }, []);
+
   return (
     <div className={contentClass}>
       {enabled && (
@@ -204,6 +223,11 @@ export const Menubar = ({ enabled, defaultOpened, defaultPinned, children, onSid
             }
           >
             <div title={user?.email} className={menubarClass.elem("user").toClassName()}>
+              {userRole && (
+                <span className={menubarClass.elem("role-label").toClassName()}>
+                  {ROLE_LABELS[userRole] || userRole}
+                </span>
+              )}
               <Userpic user={user} isInProgress={isLoading} />
               {showNewsletterDot && <div className={menubarClass.elem("userpic-badge").toClassName()} />}
             </div>
@@ -225,7 +249,9 @@ export const Menubar = ({ enabled, defaultOpened, defaultPinned, children, onSid
               <Menu>
                 {isFF(FF_HOMEPAGE) && <Menu.Item label="Home" to="/" icon={<IconHome />} data-external exact />}
                 <Menu.Item label="Projects" to="/projects" icon={<IconFolder />} data-external exact />
-                <Menu.Item label="Organization" to="/organization" icon={<IconPeople />} data-external exact />
+                {userRole !== "labeller" && (
+                  <Menu.Item label="Organization" to="/organization" icon={<IconPeople />} data-external exact />
+                )}
 
                 <Menu.Spacer />
 

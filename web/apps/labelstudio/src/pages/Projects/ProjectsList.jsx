@@ -1,10 +1,11 @@
 import chr from "chroma-js";
 import { format } from "date-fns";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { IconCheck, IconEllipsis, IconMinus, IconSparks } from "@humansignal/icons";
 import { Userpic, Button, Dropdown, Tooltip } from "@humansignal/ui";
 import { Menu, Pagination } from "../../components";
+import { useAPI } from "../../providers/ApiProvider";
 import { cn } from "../../utils/bem";
 import { absoluteURL } from "../../utils/helpers";
 import { ProjectStateChip } from "@humansignal/app-common";
@@ -12,11 +13,24 @@ import { ProjectStateChip } from "@humansignal/app-common";
 const DEFAULT_CARD_COLORS = ["#FFFFFF", "#FDFDFC"];
 
 export const ProjectsList = ({ projects, currentPage, totalItems, loadNextPage, pageSize }) => {
+  const api = useAPI();
+  const [userRole, setUserRole] = useState(null);
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      const response = await api.callApi("currentUserRole");
+      if (response?.role) setUserRole(response.role);
+    };
+    fetchRole();
+  }, []);
+
+  const isLabeller = userRole === "labeller";
+
   return (
     <>
       <div className={cn("projects-page").elem("list").toClassName()}>
         {projects.map((project) => (
-          <ProjectCard key={project.id} project={project} />
+          <ProjectCard key={project.id} project={project} isLabeller={isLabeller} />
         ))}
       </div>
       <div className={cn("projects-page").elem("pages").toClassName()}>
@@ -35,7 +49,7 @@ export const ProjectsList = ({ projects, currentPage, totalItems, loadNextPage, 
   );
 };
 
-export const EmptyProjectsList = ({ openModal }) => {
+export const EmptyProjectsList = ({ openModal, isLabeller }) => {
   return (
     <div className={cn("empty-projects-page").toClassName()}>
       <img
@@ -43,16 +57,25 @@ export const EmptyProjectsList = ({ openModal }) => {
         className={cn("empty-projects-page").elem("heidi").toClassName()}
         src={absoluteURL("/static/images/opossum_looking.png")}
       />
-      <h1 className={cn("empty-projects-page").elem("header").toClassName()}>Heidi doesn't see any projects here!</h1>
-      <p>Create one and start labeling your data.</p>
-      <Button onClick={openModal} className="my-8" aria-label="Create new project">
-        Create Project
-      </Button>
+      {isLabeller ? (
+        <>
+          <h1 className={cn("empty-projects-page").elem("header").toClassName()}>No projects assigned</h1>
+          <p>Please contact your admin to get assigned to a project.</p>
+        </>
+      ) : (
+        <>
+          <h1 className={cn("empty-projects-page").elem("header").toClassName()}>Heidi doesn't see any projects here!</h1>
+          <p>Create one and start labeling your data.</p>
+          <Button onClick={openModal} className="my-8" aria-label="Create new project">
+            Create Project
+          </Button>
+        </>
+      )}
     </div>
   );
 };
 
-const ProjectCard = ({ project }) => {
+const ProjectCard = ({ project, isLabeller }) => {
   const color = useMemo(() => {
     return DEFAULT_CARD_COLORS.includes(project.color) ? null : project.color;
   }, [project]);
@@ -96,18 +119,20 @@ const ProjectCard = ({ project }) => {
                 e.preventDefault();
               }}
             >
-              <Dropdown.Trigger
-                content={
-                  <Menu contextual>
-                    <Menu.Item href={`/projects/${project.id}/settings`}>Settings</Menu.Item>
-                    <Menu.Item href={`/projects/${project.id}/data?labeling=1`}>Label</Menu.Item>
-                  </Menu>
-                }
-              >
-                <Button size="smaller" look="string" aria-label="Project options">
-                  <IconEllipsis />
-                </Button>
-              </Dropdown.Trigger>
+              {!isLabeller && (
+                <Dropdown.Trigger
+                  content={
+                    <Menu contextual>
+                      <Menu.Item href={`/projects/${project.id}/settings`}>Settings</Menu.Item>
+                      <Menu.Item href={`/projects/${project.id}/data?labeling=1`}>Label</Menu.Item>
+                    </Menu>
+                  }
+                >
+                  <Button size="smaller" look="string" aria-label="Project options">
+                    <IconEllipsis />
+                  </Button>
+                </Dropdown.Trigger>
+              )}
             </div>
 
             {project.state && (

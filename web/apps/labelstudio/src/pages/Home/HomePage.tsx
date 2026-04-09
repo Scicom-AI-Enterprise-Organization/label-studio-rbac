@@ -1,7 +1,7 @@
 import { IconExternal, IconFolderAdd, IconHumanSignal, IconUserAdd, IconFolderOpen } from "@humansignal/icons";
 import { Button, SimpleCard, Spinner, Tooltip, Typography } from "@humansignal/ui";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useUpdatePageTitle } from "@humansignal/core";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -68,7 +68,20 @@ export const HomePage: Page = () => {
   const sortedProjects = useAtomValue(sortedProjectsAtom);
   const visitedIds = useAtomValue(visitedIdsAtom);
 
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const isLabeller = userRole === "labeller";
+
   useUpdatePageTitle("Home");
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      const response = await api.callApi("currentUserRole");
+      if (response?.role) {
+        setUserRole(response.role);
+      }
+    };
+    fetchRole();
+  }, []);
 
   // Fetch regular projects
   const { data, isFetching, isSuccess, isError } = useQuery({
@@ -142,22 +155,24 @@ export const HomePage: Page = () => {
               Let's get you started.
             </Typography>
           </div>
-          <div className="flex justify-start gap-4">
-            {actions.map((action) => {
-              return (
-                <Button
-                  key={action.title}
-                  look="outlined"
-                  align="center"
-                  className="flex-grow-0 text-16/24 gap-2 text-primary-content text-left min-w-[250px] [&_svg]:w-6 [&_svg]:h-6 pl-2"
-                  onClick={handleActions(action.type)}
-                  leading={<action.icon />}
-                >
-                  {action.title}
-                </Button>
-              );
-            })}
-          </div>
+          {!isLabeller && (
+            <div className="flex justify-start gap-4">
+              {actions.map((action) => {
+                return (
+                  <Button
+                    key={action.title}
+                    look="outlined"
+                    align="center"
+                    className="flex-grow-0 text-16/24 gap-2 text-primary-content text-left min-w-[250px] [&_svg]:w-6 [&_svg]:h-6 pl-2"
+                    onClick={handleActions(action.type)}
+                    leading={<action.icon />}
+                  >
+                    {action.title}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
 
           <SimpleCard
             title={
@@ -187,14 +202,18 @@ export const HomePage: Page = () => {
                   <IconFolderOpen />
                 </div>
                 <Typography variant="headline" size="small">
-                  Create your first project
+                  {isLabeller ? "No projects assigned" : "Create your first project"}
                 </Typography>
                 <Typography size="small" className="text-neutral-content-subtler">
-                  Import your data and set up the labeling interface to start annotating
+                  {isLabeller
+                    ? "Please contact your admin to get assigned to a project"
+                    : "Import your data and set up the labeling interface to start annotating"}
                 </Typography>
-                <Button className="mt-4" onClick={() => setModalIsOpen(true)} aria-label="Create new project">
-                  Create Project
-                </Button>
+                {!isLabeller && (
+                  <Button className="mt-4" onClick={() => setModalIsOpen(true)} aria-label="Create new project">
+                    Create Project
+                  </Button>
+                )}
               </div>
             ) : isSuccess && data && sortedProjects.length > 0 ? (
               <div className="flex flex-col gap-1">

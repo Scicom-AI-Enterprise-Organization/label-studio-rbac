@@ -96,6 +96,7 @@ export const SelectedUser = ({ user, onClose, isAdmin, onRoleChange }) => {
                   onClick={handleSave}
                   disabled={saving}
                   className="user-info__role-save"
+                  style={{ marginTop: 8 }}
                 >
                   {saving ? "Saving…" : "Save"}
                 </Button>

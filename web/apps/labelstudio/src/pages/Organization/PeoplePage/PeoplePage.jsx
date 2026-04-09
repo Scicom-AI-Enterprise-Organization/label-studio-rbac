@@ -46,10 +46,13 @@ export const PeoplePage = () => {
   const handleRoleChange = useCallback(
     async (member, newRole) => {
       try {
-        await api.callApi("updateMemberRole", {
+        const response = await api.callApi("updateMemberRole", {
           params: { pk: 1, userPk: member.user.id },
           body: { role: newRole },
         });
+        if (!response) {
+          return;
+        }
         toast.show({ message: `Role updated to ${newRole}` });
         // Refresh list so role column updates
         setRefreshKey((k) => k + 1);

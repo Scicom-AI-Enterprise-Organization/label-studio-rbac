@@ -188,9 +188,13 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         all_permissions.annotations_view,
         # Projects – view only
         all_permissions.projects_view,
-        # Data views – view only
+        # Labels – view only (needed for label links in labeling interface)
+        all_permissions.labels_view,
+        # Data views – view + create (Data Manager creates a default view on first load)
         all_permissions.views_view,
-        # Organizations – view only
+        all_permissions.views_create,
+        all_permissions.views_change,
+        # Organizations – view only (needed for account settings / JWT settings)
         all_permissions.organizations_view,
         # Predictions – view
         all_permissions.predictions_any,

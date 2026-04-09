@@ -37,8 +37,8 @@ const initializeDataManager = async (root, props, params) => {
     showPreviews: false,
     apiEndpoints: APIConfig.endpoints,
     interfaces: {
-      import: true,
-      export: true,
+      import: !params.isLabeller,
+      export: !params.isLabeller,
       backButton: false,
       labelingHeader: false,
       autoAnnotation: params.autoAnnotation,
@@ -70,12 +70,22 @@ export const DataManagerPage = ({ ...props }) => {
   const [loading, setLoading] = useState(!window.DataManager || !window.LabelStudio);
   const dataManagerRef = useRef();
   const projectId = project?.id;
+  const [userRole, setUserRole] = useState(null);
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      const response = await api.callApi("currentUserRole");
+      if (response?.role) setUserRole(response.role);
+    };
+    fetchRole();
+  }, []);
 
   const init = useCallback(async () => {
     if (!window.LabelStudio) return;
     if (!window.DataManager) return;
     if (!root.current) return;
     if (!project?.id) return;
+    if (userRole === null) return;
     if (dataManagerRef.current) return;
 
     const mlBackends = await api.callApi("mlBackends", {
@@ -90,6 +100,7 @@ export const DataManagerPage = ({ ...props }) => {
         ...params,
         project,
         autoAnnotation: isDefined(interactiveBacked),
+        isLabeller: userRole === "labeller",
       })));
 
     Object.assign(window, { dataManager });
@@ -192,7 +203,7 @@ export const DataManagerPage = ({ ...props }) => {
     }
 
     setContextProps({ dmRef: dataManager });
-  }, [projectId]);
+  }, [projectId, userRole]);
 
   const destroyDM = useCallback(() => {
     if (dataManagerRef.current) {
@@ -211,6 +222,22 @@ export const DataManagerPage = ({ ...props }) => {
     // destroy the data manager when the component is unmounted
     return () => destroyDM();
   }, []);
+
+  const isLabeller = userRole === "labeller";
+  const hasNoTasks = project && project.task_number === 0;
+
+  if (isLabeller && hasNoTasks) {
+    return (
+      <div className={cn("crash").toClassName()}>
+        <div className={cn("crash").elem("info").toClassName()}>
+          No data available yet. Please wait for your admin to add tasks to this project.
+        </div>
+        <Button to="/projects" aria-label="Back to projects" style={{ marginTop: 24 }}>
+          Back to projects
+        </Button>
+      </div>
+    );
+  }
 
   return crashed ? (
     <div className={cn("crash").toClassName()}>
@@ -241,8 +268,20 @@ DataManagerPage.pages = {
 DataManagerPage.context = ({ dmRef }) => {
   const { project } = useProject();
   const [mode, setMode] = useState(dmRef?.mode ?? "explorer");
+  const [userRole, setUserRole] = useState(null);
+  const ctxApi = useAPI();
 
-  const links = {
+  useEffect(() => {
+    const fetchRole = async () => {
+      const response = await ctxApi.callApi("currentUserRole");
+      if (response?.role) setUserRole(response.role);
+    };
+    fetchRole();
+  }, []);
+
+  const isLabeller = userRole === "labeller";
+
+  const links = isLabeller ? {} : {
     "/settings": "Settings",
   };
 

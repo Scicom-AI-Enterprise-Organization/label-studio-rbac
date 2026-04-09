@@ -107,15 +107,6 @@ poetry shell
 label-studio
 ```
 
-### Install locally with Anaconda
-
-```bash
-conda create --name label-studio
-conda activate label-studio
-conda install psycopg2
-pip install label-studio
-```
-
 ### Install for local development
 
 You can run the latest Label Studio version locally without installing the package from pypi. 
@@ -124,11 +115,21 @@ You can run the latest Label Studio version locally without installing the packa
 # Install all package dependencies
 pip install poetry
 poetry install
+
 # Run database migrations
-python label_studio/manage.py migrate
-python label_studio/manage.py collectstatic
+poetry run python3 label_studio/manage.py migrate
+poetry run python3 label_studio/manage.py collectstatic
+
 # Start the server in development mode at http://localhost:8080
-python label_studio/manage.py runserver
+poetry run python3 label_studio/manage.py runserver 0.0.0.0:8080
+```
+
+To build the frontend:
+
+```bash
+cd web
+yarn install
+yarn build
 ```
 
 ### Deploy in a cloud instance
@@ -188,6 +189,37 @@ DJANGO_DB=sqlite DJANGO_SETTINGS_MODULE=core.settings.label_studio pytest -vv
 DJANGO_DB=default DJANGO_SETTINGS_MODULE=core.settings.label_studio pytest -vv
 ```
  
+## Role-Based Access Control (RBAC)
+
+This fork adds a built-in RBAC system with three roles:
+
+| Role | Description |
+|-|-|
+| **Admin** | Full access. Can create projects, import/export data, manage organization members, assign roles, and configure project settings. |
+| **QA (Supervisor)** | Can view all projects, manage labels and annotations, review/approve/reject work, and export data. Cannot create or delete projects or manage organization members. |
+| **Labeller** | Can only view and label tasks in projects they are assigned to. Cannot create projects, import/export data, access organization settings, or modify project settings. |
+
+### Key features
+
+- **Role assignment**: Admins can assign roles (Admin, QA, Labeller) to organization members from the Organization page.
+- **Project-level access control**: Admins can assign labellers to specific projects via the **Members** tab in project settings. Labellers only see projects they are assigned to.
+- **UI restrictions**: The interface adapts based on the user's role -- labellers see a simplified UI without create/import/export/settings controls.
+- **Role indicator**: The current user's role is displayed next to the avatar in the top-right corner of the header.
+
+### Role permissions summary
+
+| Action | Admin | QA | Labeller |
+|-|-|-|-|
+| Create/delete projects | Yes | No | No |
+| Import/export data | Yes | Yes | No |
+| Project settings | Yes | Yes | No |
+| Assign members to projects | Yes | No | No |
+| View organization page | Yes | Yes | No |
+| Manage member roles | Yes | No | No |
+| View assigned projects | Yes | Yes | Assigned only |
+| Label tasks | Yes | Yes | Yes |
+| Review annotations | Yes | Yes | No |
+
 ## What you get from Label Studio
 
 https://github.com/user-attachments/assets/525ad5ff-6904-4398-b507-7e8954268d69

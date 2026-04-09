@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams as useRouterParams } from "react-router";
 import { Redirect } from "react-router-dom";
 import { Button } from "@humansignal/ui";
@@ -28,6 +28,9 @@ export const ProjectsPage = () => {
   const [currentPage, setCurrentPage] = useState(getCurrentPage());
   const [totalItems, setTotalItems] = useState(1);
   const setContextProps = useContextProps();
+
+  const [userRole, setUserRole] = useState(null);
+  const isLabeller = userRole === "labeller";
 
   useUpdatePageTitle("Projects");
   const defaultPageSize = Number.parseInt(localStorage.getItem("pages:projects-list") ?? 30);
@@ -110,10 +113,20 @@ export const ProjectsPage = () => {
     fetchProjects();
   }, []);
 
+  useEffect(() => {
+    const fetchRole = async () => {
+      const response = await api.callApi("currentUserRole");
+      if (response?.role) {
+        setUserRole(response.role);
+      }
+    };
+    fetchRole();
+  }, []);
+
   React.useEffect(() => {
     // there is a nice page with Create button when list is empty
     // so don't show the context button in that case
-    setContextProps({ openModal, showButton: projectsList.length > 0 });
+    setContextProps({ openModal, showButton: projectsList.length > 0 && !isLabeller });
   }, [projectsList.length]);
 
   return (
@@ -132,7 +145,7 @@ export const ProjectsPage = () => {
               pageSize={defaultPageSize}
             />
           ) : (
-            <EmptyProjectsList openModal={openModal} />
+            <EmptyProjectsList openModal={openModal} isLabeller={isLabeller} />
           )}
           {modal && <CreateProject onClose={closeModal} />}
         </div>

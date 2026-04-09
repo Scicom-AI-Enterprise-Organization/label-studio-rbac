@@ -99,7 +99,7 @@ export const MembersSettings = () => {
         Assign labellers to this project. Only assigned labellers will be able to see and work on this project.
         Admins and QA supervisors have access to all projects automatically.
       </p>
-      <div className={cn("settings-wrapper").toClassName()}>
+      <div className={cn("settings-wrapper").toClassName()} style={{ marginTop: 24 }}>
         {orgMembers && orgMembers.length > 0 ? (
           <div className={cn("members-settings").elem("list").toClassName()}>
             <div className={cn("members-settings").elem("header").toClassName()}>

@@ -279,11 +279,6 @@ class OrganizationMemberDetailAPI(GetParentObjectMixin, generics.RetrieveDestroy
     serializer_class = OrganizationMemberSerializer
     http_method_names = ['delete', 'get', 'patch']
 
-    @property
-    def permission_classes(self):
-        if self.request.method in ('DELETE', 'PATCH'):
-            return [IsAuthenticated, HasObjectPermission]
-        return api_settings.DEFAULT_PERMISSION_CLASSES
 
     def get_queryset(self):
         return OrganizationMember.objects.filter(organization=self.parent_object).select_related('user')

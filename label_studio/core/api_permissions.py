@@ -57,4 +57,10 @@ class RoleBasedPermission(BasePermission):
         if role is None:
             return False
 
-        return role_has_permission(role, permission)
+        allowed = role_has_permission(role, permission)
+        if not allowed:
+            logger.warning(
+                'RoleBasedPermission denied: user=%s role=%s permission=%s method=%s path=%s view=%s',
+                user, role, permission, request.method, request.path, view.__class__.__name__,
+            )
+        return allowed
