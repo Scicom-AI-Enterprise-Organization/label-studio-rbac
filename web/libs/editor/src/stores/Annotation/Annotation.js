@@ -286,11 +286,10 @@ const _Annotation = types
 
     get hasMicrophoneRecording() {
       if (!isAlive(self)) return false;
-      let found = false;
-      self.traverseTree((node) => {
-        if (node?.type === "microphone" && node._value) found = true;
-      });
-      return found;
+      for (const [, tag] of self.names) {
+        if (tag?.type === "microphone" && tag._value) return true;
+      }
+      return false;
     },
 
     get hasIncompletePolygons() {

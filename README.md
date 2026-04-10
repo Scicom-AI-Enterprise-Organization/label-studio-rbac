@@ -246,6 +246,48 @@ This ensures that any changes made after a review always get re-reviewed by QA.
 
 QA users do not create or save drafts. Since QA reviews annotations rather than authoring them, all draft-related functionality (autosave, navigation draft saves, and draft guard prompts) is disabled for QA users.
 
+## Microphone Recording Plugin
+
+This fork adds a `<Microphone>` tag for audio recording directly in the labeling interface. Annotators can record audio from their microphone, play it back with a waveform visualizer, and re-record before submitting.
+
+### Example labeling config
+
+```xml
+<View>
+  <Text name="text" value="$text" />
+  <Microphone name="mic" />
+</View>
+```
+
+### Attributes
+
+| Attribute | Default | Description |
+|-|-|-|
+| `name` | (required) | Tag identifier |
+| `maxduration` | `300` | Maximum recording length in seconds |
+| `format` | `webm` | Audio format (`webm` or `wav`) |
+
+### Features
+
+- **Live waveform** during recording with scrolling visualization
+- **Waveform playback** after recording with seek, play/pause, and time display
+- **Auto-upload** recordings are automatically uploaded to the server after recording stops
+- **Playback on revisit** previously recorded audio is loaded and playable when revisiting a submitted task
+- **Re-record** re-record and update submissions
+- **Secure context required** microphone access requires HTTPS or `http://localhost`
+
+### Example task data
+
+```json
+{ "text": "Please read this sentence aloud" }
+```
+
+### Notes
+
+- The `<Microphone>` tag works as a standalone object tag -- no control tag (like `Choices` or `TextArea`) is required, though you can add them if needed.
+- Recorded audio is stored on the server via Label Studio's built-in file upload storage (`/data/upload/`).
+- The audio URL is persisted in the annotation result with type `microphone`.
+
 ## What you get from Label Studio
 
 https://github.com/user-attachments/assets/525ad5ff-6904-4398-b507-7e8954268d69
