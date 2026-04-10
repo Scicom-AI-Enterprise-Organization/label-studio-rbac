@@ -284,6 +284,15 @@ const _Annotation = types
       return results;
     },
 
+    get hasMicrophoneRecording() {
+      if (!isAlive(self)) return false;
+      let found = false;
+      self.traverseTree((node) => {
+        if (node?.type === "microphone" && node._value) found = true;
+      });
+      return found;
+    },
+
     get hasIncompletePolygons() {
       if (!isAlive(self)) return false;
       for (const area of self.areas.values()) {
@@ -1076,6 +1085,18 @@ const _Annotation = types
         .filter(Boolean)
         .concat(self.relationStore.serialize(options));
 
+      // Collect results from Microphone tags (they produce results directly, not via regions)
+      self.traverseTree((node) => {
+        if (node?.type === "microphone" && node._value) {
+          result.push({
+            from_name: node.name,
+            to_name: node.name,
+            type: "microphone",
+            value: { audio_url: node._value },
+          });
+        }
+      });
+
       document.body.style.cursor = "default";
 
       return result;
@@ -1293,6 +1314,9 @@ const _Annotation = types
     },
 
     deserializeSingleResult(obj, getArea, createArea) {
+      // Microphone results are handled by the Microphone tag's needsUpdate(), skip here
+      if (obj.type === "microphone") return;
+
       if (obj.type !== "relation") {
         const { id, value: rawValue, type, ...data } = obj;
         let { from_name, to_name } = data;

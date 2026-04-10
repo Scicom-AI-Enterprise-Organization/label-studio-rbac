@@ -42,7 +42,7 @@ export const Controls = controlsInjector(
 
     // const isReady = store.annotationStore.selected.objects.every(object => object.isReady === undefined || object.isReady);
     const disabled = !editable || store.isSubmitting || historySelected || isInProgress; // || !isReady;
-    const submitDisabled = store.hasInterface("annotations:deny-empty") && results.length === 0;
+    const submitDisabled = store.hasInterface("annotations:deny-empty") && results.length === 0 && !annotation.hasMicrophoneRecording;
 
     const buttonHandler = useCallback(
       async (e, callback, tooltipMessage) => {

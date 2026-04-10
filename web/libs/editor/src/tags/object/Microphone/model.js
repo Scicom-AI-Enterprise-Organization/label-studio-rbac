@@ -97,7 +97,6 @@ export const MicrophoneModel = types.compose(
       },
 
       get projectId() {
-        // Try store.project first, then extract from URL (/projects/{id}/...)
         if (self.store?.project?.id) return self.store.project.id;
         const match = window.location.pathname.match(/\/projects\/(\d+)/);
         return match ? Number(match[1]) : null;
@@ -145,10 +144,38 @@ export const MicrophoneModel = types.compose(
 
       afterCreate() {
         self.setReady(true);
-        // If _value has a server URL from a previous annotation, load it for playback
+        // Restore from _value if it has a server URL (set during tree creation from previous result)
         if (self._value && !self._value.startsWith("data:") && !self._value.startsWith("blob:")) {
           self.audioURL = self._value;
         }
+      },
+
+      /**
+       * Called when annotation results are loaded (e.g. revisiting a submitted task).
+       * Scans the raw results for a microphone recording and restores the audio URL.
+       */
+      needsUpdate() {
+        if (self.audioURL) return; // already loaded
+
+        // Check annotation results for a previously saved microphone recording
+        const annotation = self.annotation;
+        if (!annotation?._initialAnnotationObj) return;
+
+        for (const obj of annotation._initialAnnotationObj) {
+          if (obj.from_name === self.name && obj.type === "microphone" && obj.value?.audio_url) {
+            self._value = obj.value.audio_url;
+            self.audioURL = obj.value.audio_url;
+            break;
+          }
+        }
+      },
+
+      /**
+       * Called before the annotation is submitted.
+       * Injects the microphone recording result into the annotation's serialized output.
+       */
+      beforeSend() {
+        // nothing needed here — serializeAnnotation handles it via our custom result
       },
 
       onError(error) {
