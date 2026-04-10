@@ -288,7 +288,16 @@ This fork adds a `<Microphone>` tag for audio recording directly in the labeling
 - **Playback on revisit** previously recorded audio is loaded and playable when revisiting a submitted task
 - **Re-record** re-record and update submissions
 - **Audio column in data manager** recorded audio appears as a playable column in the project data view
+- **Keyboard shortcuts** for fast annotation workflow
 - **Secure context required** microphone access requires HTTPS or `http://localhost`
+
+### Keyboard shortcuts
+
+| Key | Action |
+|-|-|
+| `R` | Start recording (idle) / Re-record (playback) |
+| `S` | Stop recording |
+| `Space` | Toggle: Record (idle) / Stop (recording) / Play-Pause (playback) |
 
 ### Example task data
 

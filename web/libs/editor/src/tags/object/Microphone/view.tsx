@@ -1,6 +1,7 @@
 import { observer } from "mobx-react";
-import { type FC, useCallback, useEffect, useRef, useState } from "react";
+import { type FC, useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { ErrorMessage } from "../../../components/ErrorMessage/ErrorMessage";
+import { Hotkey } from "../../../core/Hotkey";
 import { cn } from "../../../utils/bem";
 
 import "./view.scss";
@@ -15,6 +16,10 @@ const formatTime = (secs: number) => {
   const s = Math.floor(secs % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
 };
+
+const Kbd: FC<{ shortcut: string }> = ({ shortcut }) => (
+  <kbd className={cn("microphone-tag").elem("kbd").toClassName()}>{shortcut}</kbd>
+);
 
 // ── Live scrolling waveform during recording ──────────────────────────
 const LiveWaveform: FC<{ analyser: AnalyserNode | null }> = ({ analyser }) => {
@@ -115,7 +120,6 @@ async function loadAudioBuffer(audioBlob: Blob | null, audioURL: string): Promis
       reader.readAsArrayBuffer(audioBlob);
     });
   } else {
-    // fetch from server URL
     const resp = await fetch(audioURL);
     if (!resp.ok) throw new Error(`Failed to load audio (HTTP ${resp.status})`);
     arrayBuffer = await resp.arrayBuffer();
@@ -128,213 +132,221 @@ async function loadAudioBuffer(audioBlob: Blob | null, audioURL: string): Promis
 }
 
 // ── Static waveform + playback ────────────────────────────────────────
-const PlaybackWaveform: FC<{ audioURL: string; audioBlob: Blob | null }> = ({ audioURL, audioBlob }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const rafRef = useRef<number>(0);
-  const [playing, setPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const peaksRef = useRef<{ min: number; max: number }[]>([]);
-  const canvasDims = useRef({ w: 0, h: 0 });
+export interface PlaybackWaveformHandle {
+  togglePlay: () => void;
+}
 
-  useEffect(() => {
-    if (!audioURL || !canvasRef.current) return;
+const PlaybackWaveform = forwardRef<PlaybackWaveformHandle, { audioURL: string; audioBlob: Blob | null }>(
+  ({ audioURL, audioBlob }, ref) => {
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const rafRef = useRef<number>(0);
+    const [playing, setPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const peaksRef = useRef<{ min: number; max: number }[]>([]);
+    const canvasDims = useRef({ w: 0, h: 0 });
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-    canvasDims.current = { w: rect.width, h: rect.height };
-
-    loadAudioBuffer(audioBlob, audioURL)
-      .then((buffer) => {
-        setDuration(buffer.duration);
-
-        const channelData = buffer.getChannelData(0);
-        const w = rect.width;
-        const samplesPerPixel = Math.max(1, Math.floor(channelData.length / w));
-        const peaks: { min: number; max: number }[] = [];
-
-        for (let i = 0; i < w; i++) {
-          let lo = 1;
-          let hi = -1;
-          const start = i * samplesPerPixel;
-          const end = Math.min(start + samplesPerPixel, channelData.length);
-          for (let j = start; j < end; j++) {
-            if (channelData[j] < lo) lo = channelData[j];
-            if (channelData[j] > hi) hi = channelData[j];
-          }
-          peaks.push({ min: lo, max: hi });
-        }
-        peaksRef.current = peaks;
-        drawWaveform(ctx, rect.width, rect.height, peaks, 0);
-      })
-      .catch((e) => console.error("Failed to decode audio for waveform", e));
-  }, [audioURL, audioBlob]);
-
-  useEffect(() => {
-    if (!playing) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!ctx) return;
-    const { w, h } = canvasDims.current;
-
-    const animate = () => {
-      rafRef.current = requestAnimationFrame(animate);
+    const togglePlay = useCallback(() => {
       const audio = audioRef.current;
       if (!audio) return;
-      setCurrentTime(audio.currentTime);
-      const progress = duration > 0 ? audio.currentTime / duration : 0;
-      drawWaveform(ctx, w, h, peaksRef.current, progress);
-    };
+      if (playing) {
+        audio.pause();
+      } else {
+        audio.play();
+      }
+    }, [playing]);
 
-    animate();
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [playing, duration]);
+    useImperativeHandle(ref, () => ({ togglePlay }), [togglePlay]);
 
-  const drawWaveform = (
-    ctx: CanvasRenderingContext2D,
-    w: number, h: number,
-    peaks: { min: number; max: number }[],
-    progress: number,
-  ) => {
-    const midY = h / 2;
-    const progressX = Math.floor(progress * w);
+    useEffect(() => {
+      if (!audioURL || !canvasRef.current) return;
 
-    ctx.clearRect(0, 0, w * 2, h * 2);
-    ctx.fillStyle = "#f9f8f6";
-    ctx.fillRect(0, 0, w, h);
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    ctx.strokeStyle = "#e1ded5";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, midY);
-    ctx.lineTo(w, midY);
-    ctx.stroke();
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      canvasDims.current = { w: rect.width, h: rect.height };
 
-    for (let i = 0; i < peaks.length; i++) {
-      const { min, max } = peaks[i];
-      const top = midY + min * (h / 2 - 4);
-      const bottom = midY + max * (h / 2 - 4);
-      const barH = Math.max(1, bottom - top);
-      ctx.fillStyle = i < progressX ? "rgba(76, 95, 169, 0.85)" : "rgba(164, 159, 149, 0.55)";
-      ctx.fillRect(i, top, 1, barH);
-    }
+      loadAudioBuffer(audioBlob, audioURL)
+        .then((buffer) => {
+          setDuration(buffer.duration);
 
-    if (progress > 0 && progress < 1) {
-      ctx.strokeStyle = "#4c5fa9";
-      ctx.lineWidth = 2;
+          const channelData = buffer.getChannelData(0);
+          const w = rect.width;
+          const samplesPerPixel = Math.max(1, Math.floor(channelData.length / w));
+          const peaks: { min: number; max: number }[] = [];
+
+          for (let i = 0; i < w; i++) {
+            let lo = 1;
+            let hi = -1;
+            const start = i * samplesPerPixel;
+            const end = Math.min(start + samplesPerPixel, channelData.length);
+            for (let j = start; j < end; j++) {
+              if (channelData[j] < lo) lo = channelData[j];
+              if (channelData[j] > hi) hi = channelData[j];
+            }
+            peaks.push({ min: lo, max: hi });
+          }
+          peaksRef.current = peaks;
+          drawWaveform(ctx, rect.width, rect.height, peaks, 0);
+        })
+        .catch((e) => console.error("Failed to decode audio for waveform", e));
+    }, [audioURL, audioBlob]);
+
+    useEffect(() => {
+      if (!playing) return;
+
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (!ctx) return;
+      const { w, h } = canvasDims.current;
+
+      const animate = () => {
+        rafRef.current = requestAnimationFrame(animate);
+        const audio = audioRef.current;
+        if (!audio) return;
+        setCurrentTime(audio.currentTime);
+        const progress = duration > 0 ? audio.currentTime / duration : 0;
+        drawWaveform(ctx, w, h, peaksRef.current, progress);
+      };
+
+      animate();
+      return () => cancelAnimationFrame(rafRef.current);
+    }, [playing, duration]);
+
+    const drawWaveform = (
+      ctx: CanvasRenderingContext2D,
+      w: number, h: number,
+      peaks: { min: number; max: number }[],
+      progress: number,
+    ) => {
+      const midY = h / 2;
+      const progressX = Math.floor(progress * w);
+
+      ctx.clearRect(0, 0, w * 2, h * 2);
+      ctx.fillStyle = "#f9f8f6";
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.strokeStyle = "#e1ded5";
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(progressX, 2);
-      ctx.lineTo(progressX, h - 2);
+      ctx.moveTo(0, midY);
+      ctx.lineTo(w, midY);
       ctx.stroke();
 
-      ctx.fillStyle = "#4c5fa9";
-      ctx.beginPath();
-      ctx.arc(progressX, 2, 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(progressX, h - 2, 3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  };
+      for (let i = 0; i < peaks.length; i++) {
+        const { min, max } = peaks[i];
+        const top = midY + min * (h / 2 - 4);
+        const bottom = midY + max * (h / 2 - 4);
+        const barH = Math.max(1, bottom - top);
+        ctx.fillStyle = i < progressX ? "rgba(76, 95, 169, 0.85)" : "rgba(164, 159, 149, 0.55)";
+        ctx.fillRect(i, top, 1, barH);
+      }
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    const audio = audioRef.current;
-    if (!canvas || !audio || !duration) return;
+      if (progress > 0 && progress < 1) {
+        ctx.strokeStyle = "#4c5fa9";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(progressX, 2);
+        ctx.lineTo(progressX, h - 2);
+        ctx.stroke();
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const ratio = x / rect.width;
-    audio.currentTime = ratio * duration;
-    setCurrentTime(audio.currentTime);
+        ctx.fillStyle = "#4c5fa9";
+        ctx.beginPath();
+        ctx.arc(progressX, 2, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(progressX, h - 2, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
 
-    const ctx = canvas.getContext("2d");
-    const { w, h } = canvasDims.current;
-    if (ctx) drawWaveform(ctx, w, h, peaksRef.current, ratio);
-  };
+    const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      const audio = audioRef.current;
+      if (!canvas || !audio || !duration) return;
 
-  const togglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (playing) {
-      audio.pause();
-    } else {
-      audio.play();
-    }
-  };
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const ratio = x / rect.width;
+      audio.currentTime = ratio * duration;
+      setCurrentTime(audio.currentTime);
 
-  return (
-    <div className={cn("microphone-tag").elem("player").toClassName()}>
-      <audio
-        ref={audioRef}
-        src={audioURL}
-        preload="auto"
-        onPlay={() => setPlaying(true)}
-        onPause={() => {
-          setPlaying(false);
-          const audio = audioRef.current;
-          const ctx = canvasRef.current?.getContext("2d");
-          const { w, h } = canvasDims.current;
-          if (audio && ctx) {
-            drawWaveform(ctx, w, h, peaksRef.current, duration > 0 ? audio.currentTime / duration : 0);
-          }
-        }}
-        onEnded={() => {
-          setPlaying(false);
-          setCurrentTime(0);
-          const ctx = canvasRef.current?.getContext("2d");
-          const { w, h } = canvasDims.current;
-          if (ctx) drawWaveform(ctx, w, h, peaksRef.current, 0);
-        }}
-      />
-      <canvas
-        ref={canvasRef}
-        className={cn("microphone-tag").elem("playback-waveform").toClassName()}
-        onClick={handleCanvasClick}
-      />
-      <div className={cn("microphone-tag").elem("player-controls").toClassName()}>
-        <button
-          type="button"
-          className={cn("microphone-tag").elem("play-btn").toClassName()}
-          onClick={togglePlay}
-          aria-label={playing ? "Pause" : "Play"}
-        >
-          {playing ? (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <rect x="3" y="2" width="4" height="12" rx="1" />
-              <rect x="9" y="2" width="4" height="12" rx="1" />
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M4 2.5v11l9-5.5z" />
-            </svg>
-          )}
-        </button>
-        <span className={cn("microphone-tag").elem("time").toClassName()}>
-          {formatTime(currentTime)}
-        </span>
-        <div className={cn("microphone-tag").elem("progress-track").toClassName()}>
-          <div
-            className={cn("microphone-tag").elem("progress-fill").toClassName()}
-            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-          />
+      const ctx = canvas.getContext("2d");
+      const { w, h } = canvasDims.current;
+      if (ctx) drawWaveform(ctx, w, h, peaksRef.current, ratio);
+    };
+
+    return (
+      <div className={cn("microphone-tag").elem("player").toClassName()}>
+        <audio
+          ref={audioRef}
+          src={audioURL}
+          preload="auto"
+          onPlay={() => setPlaying(true)}
+          onPause={() => {
+            setPlaying(false);
+            const audio = audioRef.current;
+            const ctx = canvasRef.current?.getContext("2d");
+            const { w, h } = canvasDims.current;
+            if (audio && ctx) {
+              drawWaveform(ctx, w, h, peaksRef.current, duration > 0 ? audio.currentTime / duration : 0);
+            }
+          }}
+          onEnded={() => {
+            setPlaying(false);
+            setCurrentTime(0);
+            const ctx = canvasRef.current?.getContext("2d");
+            const { w, h } = canvasDims.current;
+            if (ctx) drawWaveform(ctx, w, h, peaksRef.current, 0);
+          }}
+        />
+        <canvas
+          ref={canvasRef}
+          className={cn("microphone-tag").elem("playback-waveform").toClassName()}
+          onClick={handleCanvasClick}
+        />
+        <div className={cn("microphone-tag").elem("player-controls").toClassName()}>
+          <button
+            type="button"
+            className={cn("microphone-tag").elem("play-btn").toClassName()}
+            onClick={togglePlay}
+            aria-label={playing ? "Pause" : "Play"}
+          >
+            {playing ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <rect x="3" y="2" width="4" height="12" rx="1" />
+                <rect x="9" y="2" width="4" height="12" rx="1" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M4 2.5v11l9-5.5z" />
+              </svg>
+            )}
+          </button>
+          <span className={cn("microphone-tag").elem("time").toClassName()}>
+            {formatTime(currentTime)}
+          </span>
+          <div className={cn("microphone-tag").elem("progress-track").toClassName()}>
+            <div
+              className={cn("microphone-tag").elem("progress-fill").toClassName()}
+              style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+            />
+          </div>
+          <span className={cn("microphone-tag").elem("time").toClassName()}>
+            {formatTime(duration)}
+          </span>
         </div>
-        <span className={cn("microphone-tag").elem("time").toClassName()}>
-          {formatTime(duration)}
-        </span>
       </div>
-    </div>
-  );
-};
+    );
+  },
+);
 
 // ── Main Microphone component ─────────────────────────────────────────
 const MicrophoneView: FC<MicrophoneProps> = observer(({ item }) => {
@@ -344,6 +356,12 @@ const MicrophoneView: FC<MicrophoneProps> = observer(({ item }) => {
   const [elapsed, setElapsed] = useState(0);
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const playbackRef = useRef<PlaybackWaveformHandle | null>(null);
+
+  // Keep refs to latest callbacks so hotkeys always call the current version
+  const startRecordingRef = useRef<() => void>(() => {});
+  const stopRecordingRef = useRef<() => void>(() => {});
+  const rerecordRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     return () => {
@@ -363,6 +381,7 @@ const MicrophoneView: FC<MicrophoneProps> = observer(({ item }) => {
   }, [item.format]);
 
   const startRecording = useCallback(async () => {
+    if (item.recording || item.readonly) return;
     try {
       chunksRef.current = [];
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -435,6 +454,49 @@ const MicrophoneView: FC<MicrophoneProps> = observer(({ item }) => {
     }
   }, []);
 
+  const rerecord = useCallback(() => {
+    if (item.readonly) return;
+    item.clearRecording();
+    setElapsed(0);
+  }, [item]);
+
+  // Update refs so hotkeys always use the latest callbacks
+  startRecordingRef.current = startRecording;
+  stopRecordingRef.current = stopRecording;
+  rerecordRef.current = rerecord;
+
+  // Register keyboard shortcuts
+  useEffect(() => {
+    const hotkeys = Hotkey("Microphone", "Microphone Recording");
+
+    hotkeys.addKey("r", () => {
+      if (item.recording) return;
+      if (item.hasRecording) {
+        rerecordRef.current();
+      } else {
+        startRecordingRef.current();
+      }
+    }, "Record / Re-record audio");
+
+    hotkeys.addKey("s", () => {
+      stopRecordingRef.current();
+    }, "Stop recording");
+
+    hotkeys.addKey("space", () => {
+      if (item.recording) {
+        stopRecordingRef.current();
+      } else if (item.hasRecording) {
+        playbackRef.current?.togglePlay();
+      } else {
+        startRecordingRef.current();
+      }
+    }, "Play/Pause/Record toggle");
+
+    return () => {
+      hotkeys.unbindAll();
+    };
+  }, []);
+
   const isReadOnly = item.readonly;
 
   return (
@@ -464,7 +526,7 @@ const MicrophoneView: FC<MicrophoneProps> = observer(({ item }) => {
           onClick={startRecording}
         >
           <span className={cn("microphone-tag").elem("record-dot").toClassName()} />
-          Record
+          Record <Kbd shortcut="R" />
         </button>
       )}
 
@@ -485,7 +547,7 @@ const MicrophoneView: FC<MicrophoneProps> = observer(({ item }) => {
               <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                 <rect x="1" y="1" width="10" height="10" rx="2" />
               </svg>
-              Stop
+              Stop <Kbd shortcut="S" />
             </button>
           </div>
         </div>
@@ -494,18 +556,18 @@ const MicrophoneView: FC<MicrophoneProps> = observer(({ item }) => {
       {/* Playback — waveform + controls + re-record */}
       {item.hasRecording && !item.recording && !item.uploading && (
         <div className={cn("microphone-tag").elem("playback").toClassName()}>
-          <PlaybackWaveform audioURL={item.audioURL} audioBlob={item.audioBlob} />
+          <PlaybackWaveform ref={playbackRef} audioURL={item.audioURL} audioBlob={item.audioBlob} />
           {!isReadOnly && (
             <div className={cn("microphone-tag").elem("playback-actions").toClassName()}>
+              <span className={cn("microphone-tag").elem("hint").toClassName()}>
+                <Kbd shortcut="Space" /> Play/Pause
+              </span>
               <button
                 type="button"
                 className={cn("microphone-tag").elem("rerecord-btn").toClassName()}
-                onClick={() => {
-                  item.clearRecording();
-                  setElapsed(0);
-                }}
+                onClick={rerecord}
               >
-                Re-record
+                Re-record <Kbd shortcut="R" />
               </button>
             </div>
           )}
