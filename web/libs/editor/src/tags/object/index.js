@@ -1,5 +1,6 @@
 import { AudioModel } from "./Audio";
 import { ImageModel } from "./Image";
+import { MicrophoneModel } from "./Microphone";
 import { ParagraphsModel } from "./Paragraphs";
 import { PdfModel } from "./Pdf";
 import { RichTextModel } from "./RichText";
@@ -16,6 +17,7 @@ import "./Text";
 export {
   AudioModel,
   ImageModel,
+  MicrophoneModel,
   ParagraphsModel,
   TimeSeriesModel,
   RichTextModel,

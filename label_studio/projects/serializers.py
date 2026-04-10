@@ -124,7 +124,12 @@ class ProjectSerializer(FlexFieldsModelSerializer):
 
     @staticmethod
     def get_config_has_control_tags(project) -> bool:
-        return len(project.get_parsed_config()) > 0
+        if len(project.get_parsed_config()) > 0:
+            return True
+        # Microphone tag is self-contained (records + submits), no control tag needed
+        if project.label_config and '<Microphone' in project.label_config:
+            return True
+        return False
 
     @staticmethod
     def get_config_suitable_for_bulk_annotation(project) -> bool:

@@ -128,6 +128,7 @@ const Model = types
       "video",
       "videorectangle",
       "timelinelabels",
+      "microphone",
       "custominterface",
       ...Registry.customTags.map((t) => t.tag.toLowerCase()),
     ]),

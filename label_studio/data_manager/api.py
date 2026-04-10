@@ -524,7 +524,8 @@ class ProjectStateAPI(APIView):
                 'target_syncing': False,
                 'task_count': project.tasks.count(),
                 'annotation_count': Annotation.objects.filter(project=project).count(),
-                'config_has_control_tags': len(project.get_parsed_config()) > 0,
+                'config_has_control_tags': len(project.get_parsed_config()) > 0
+                or (project.label_config and '<Microphone' in project.label_config),
             }
         )
         return Response(data)

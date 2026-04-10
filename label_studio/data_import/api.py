@@ -1031,3 +1031,28 @@ class DownloadStorageData(APIView):
             response['Content-Disposition'] = f'inline; filename="{filepath}"'
             response['filename'] = filepath
             return response
+
+
+class MicrophoneUploadAPI(APIView):
+    """Upload recorded audio from the Microphone tag and return a serving URL."""
+
+    parser_classes = (MultiPartParser, FormParser)
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, pk):
+        project = generics.get_object_or_404(Project.objects.for_user(request.user), pk=pk)
+
+        audio_file = request.FILES.get('audio')
+        if not audio_file:
+            return Response(
+                {'error': 'No audio file provided. Send a file in the "audio" form field.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_upload = FileUpload.objects.create(
+            user=request.user,
+            project=project,
+            file=audio_file,
+        )
+
+        return Response({'url': file_upload.url}, status=status.HTTP_201_CREATED)
