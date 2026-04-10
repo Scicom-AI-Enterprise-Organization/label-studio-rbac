@@ -250,12 +250,25 @@ QA users do not create or save drafts. Since QA reviews annotations rather than 
 
 This fork adds a `<Microphone>` tag for audio recording directly in the labeling interface. Annotators can record audio from their microphone, play it back with a waveform visualizer, and re-record before submitting.
 
-### Example labeling config
+### Example labeling configs
+
+**Standalone recording (no control tags needed):**
 
 ```xml
 <View>
   <Text name="text" value="$text" />
   <Microphone name="mic" />
+</View>
+```
+
+**Recording with transcription:**
+
+```xml
+<View>
+  <Text name="prompt" value="$prompt" />
+  <Microphone name="mic" />
+  <TextArea name="transcription" toName="mic"
+            placeholder="Transcribe what you recorded" />
 </View>
 ```
 
@@ -274,6 +287,7 @@ This fork adds a `<Microphone>` tag for audio recording directly in the labeling
 - **Auto-upload** recordings are automatically uploaded to the server after recording stops
 - **Playback on revisit** previously recorded audio is loaded and playable when revisiting a submitted task
 - **Re-record** re-record and update submissions
+- **Audio column in data manager** recorded audio appears as a playable column in the project data view
 - **Secure context required** microphone access requires HTTPS or `http://localhost`
 
 ### Example task data
@@ -282,11 +296,34 @@ This fork adds a `<Microphone>` tag for audio recording directly in the labeling
 { "text": "Please read this sentence aloud" }
 ```
 
+### Storage and export
+
+- Recorded audio is always saved to Label Studio's built-in upload directory for browser playback
+- If a **local export storage** is configured (Project Settings > Cloud Storage > Target Storage), audio files are also copied there automatically
+- The exported annotation result includes the storage path:
+
+```json
+{
+  "from_name": "mic",
+  "to_name": "mic",
+  "type": "microphone",
+  "value": {
+    "audio_url": "/path/to/target-storage/abc-mic-mic-1712745600000.webm",
+    "playback_url": "/data/upload/5/abc-mic-mic-1712745600000.webm"
+  }
+}
+```
+
+| Field | Description |
+|-|-|
+| `audio_url` | Path in target storage (for your data pipeline). Falls back to the playback URL if no target storage is configured. |
+| `playback_url` | Serveable URL for browser playback. Only present when target storage is configured. |
+
 ### Notes
 
-- The `<Microphone>` tag works as a standalone object tag -- no control tag (like `Choices` or `TextArea`) is required, though you can add them if needed.
-- Recorded audio is stored on the server via Label Studio's built-in file upload storage (`/data/upload/`).
-- The audio URL is persisted in the annotation result with type `microphone`.
+- The `<Microphone>` tag works as a standalone object tag -- no control tag (like `Choices` or `TextArea`) is required, though you can add them if needed
+- When exporting to CSV, the `mic` column contains the audio URL as JSON
+- The data manager shows a **Recording** column with the audio for each task
 
 ## What you get from Label Studio
 

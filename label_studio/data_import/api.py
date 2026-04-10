@@ -1034,12 +1034,19 @@ class DownloadStorageData(APIView):
 
 
 class MicrophoneUploadAPI(APIView):
-    """Upload recorded audio from the Microphone tag and return a serving URL."""
+    """Upload recorded audio from the Microphone tag.
+
+    Always saves to Label Studio's built-in upload directory (for browser playback).
+    Additionally copies to the project's configured local export storage if available.
+    """
 
     parser_classes = (MultiPartParser, FormParser)
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, pk):
+        import os
+        import shutil
+
         project = generics.get_object_or_404(Project.objects.for_user(request.user), pk=pk)
 
         audio_file = request.FILES.get('audio')
@@ -1049,10 +1056,40 @@ class MicrophoneUploadAPI(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Save to built-in upload storage (serveable via /data/upload/)
         file_upload = FileUpload.objects.create(
             user=request.user,
             project=project,
             file=audio_file,
         )
 
-        return Response({'url': file_upload.url}, status=status.HTTP_201_CREATED)
+        # Also copy to configured local export storage if available
+        storage_path = None
+        target_path = self._get_local_export_storage_path(project)
+        if target_path:
+            try:
+                os.makedirs(target_path, exist_ok=True)
+                src = file_upload.file.path
+                dst = os.path.join(target_path, file_upload.file_name)
+                shutil.copy2(src, dst)
+                storage_path = dst
+            except Exception as e:
+                logger.warning(f'Failed to copy audio to target storage: {e}')
+
+        return Response({
+            'url': file_upload.url,             # serveable URL for browser playback
+            'storage_path': storage_path,        # target storage path for export (null if no storage configured)
+        }, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    def _get_local_export_storage_path(project):
+        """Return the local export storage path if configured for this project."""
+        try:
+            from io_storages.localfiles.models import LocalFilesExportStorage
+
+            storage = LocalFilesExportStorage.objects.filter(project=project).first()
+            if storage and storage.path:
+                return storage.path
+        except Exception:
+            pass
+        return None

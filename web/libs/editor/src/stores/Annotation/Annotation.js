@@ -1087,11 +1087,16 @@ const _Annotation = types
       // Collect results from Microphone tags (they produce results directly, not via regions)
       self.traverseTree((node) => {
         if (node?.type === "microphone" && node._value) {
+          const value = { audio_url: node.storagePath || node._value };
+          // Keep playback URL separate so the browser can still play the audio
+          if (node.storagePath && node._value !== node.storagePath) {
+            value.playback_url = node._value;
+          }
           result.push({
             from_name: node.name,
             to_name: node.name,
             type: "microphone",
-            value: { audio_url: node._value },
+            value,
           });
         }
       });

@@ -57,6 +57,7 @@ export const MicrophoneModel = types.compose(
       uploading: false,
       audioURL: null,
       audioBlob: null,
+      storagePath: null,
       duration: 0,
       errors: [],
     }))
@@ -163,8 +164,11 @@ export const MicrophoneModel = types.compose(
 
         for (const obj of annotation._initialAnnotationObj) {
           if (obj.from_name === self.name && obj.type === "microphone" && obj.value?.audio_url) {
-            self._value = obj.value.audio_url;
-            self.audioURL = obj.value.audio_url;
+            // playback_url is the serveable URL for the browser; audio_url is the storage path for export
+            const playbackUrl = obj.value.playback_url || obj.value.audio_url;
+            self._value = playbackUrl;
+            self.audioURL = playbackUrl;
+            self.storagePath = obj.value.playback_url ? obj.value.audio_url : null;
             break;
           }
         }
@@ -219,6 +223,7 @@ export const MicrophoneModel = types.compose(
           const data = yield response.json();
           self._value = data.url;
           self.audioURL = data.url;
+          self.storagePath = data.storage_path || null;
           self.uploading = false;
           return true;
         } catch (e) {

@@ -1058,12 +1058,34 @@ class Project(ProjectMixin, FsmHistoryStateModel):
         if self.parsed_label_config is None:
             try:
                 self.parsed_label_config = parse_config(self.label_config)
+                # Add Microphone tags as pseudo-control entries so exports include them
+                self._add_microphone_to_parsed_config()
                 self.save(update_fields=['parsed_label_config'])
             except Exception as e:
                 logger.error(f'Error parsing label config for project {self.id}: {e}', exc_info=True)
                 return {}
 
         return self.parsed_label_config
+
+    def _add_microphone_to_parsed_config(self):
+        """Scan label_config XML for <Microphone> tags and add them to parsed_label_config."""
+        if not self.label_config:
+            return
+        try:
+            from lxml import etree
+            xml = etree.fromstring(self.label_config)
+            for mic in xml.iter('Microphone'):
+                name = mic.get('name')
+                if name and name not in self.parsed_label_config:
+                    self.parsed_label_config[name] = {
+                        'type': 'Microphone',
+                        'to_name': [name],
+                        'inputs': [{'type': 'Microphone', 'value': name}],
+                        'labels': [],
+                        'labels_attrs': [],
+                    }
+        except Exception as e:
+            logger.warning(f'Failed to parse Microphone tags from config: {e}')
 
     def get_counters(self):
         """Method to get extra counters data from Manager method with_counts()"""

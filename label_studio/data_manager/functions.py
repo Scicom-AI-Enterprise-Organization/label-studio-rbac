@@ -70,6 +70,33 @@ def get_all_columns(project, *_):
         task_data_children.append(column['id'])
         i += 1
 
+    # Add columns for Microphone recordings from annotation results
+    if project.label_config and '<Microphone' in project.label_config:
+        try:
+            from lxml import etree
+
+            xml = etree.fromstring(project.label_config)
+            for mic in xml.iter('Microphone'):
+                mic_name = mic.get('name')
+                if mic_name:
+                    col_id = f'mic_audio_{mic_name}'
+                    column = {
+                        'id': col_id,
+                        'title': f'Recording ({mic_name})',
+                        'type': 'Audio',
+                        'target': 'tasks',
+                        'parent': 'data',
+                        'visibility_defaults': {
+                            'explore': True,
+                            'labeling': False,
+                        },
+                        'project_defined': True,
+                    }
+                    result['columns'].append(column)
+                    task_data_children.append(col_id)
+        except Exception:
+            pass
+
     remove_members_schema = flag_set('fflag_feat_fit_449_datamanager_filter_members_short', user='auto')
 
     # --- Data root ---

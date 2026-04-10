@@ -484,7 +484,33 @@ class DataManagerTaskSerializer(TaskSerializer):
             and flag_set('fflag_feat_fit_710_fsm_state_fields', user=user)
         ):
             ret.pop('state', None)
+
+        # Inject microphone audio URLs from annotation results into task data
+        self._inject_microphone_audio(obj, ret)
+
         return ret
+
+    @staticmethod
+    def _inject_microphone_audio(obj, ret):
+        """Extract audio URLs from microphone annotation results and add them to task data."""
+        try:
+            annotations = obj.annotations.all()
+            for annotation in annotations:
+                if not annotation.result:
+                    continue
+                for result in annotation.result:
+                    if result.get('type') == 'microphone' and result.get('value', {}).get('audio_url'):
+                        col_id = f'mic_audio_{result["from_name"]}'
+                        playback = result['value'].get('playback_url') or result['value']['audio_url']
+                        if 'data' not in ret:
+                            ret['data'] = {}
+                        if isinstance(ret['data'], str):
+                            import json as _json
+                            ret['data'] = _json.loads(ret['data'])
+                        ret['data'][col_id] = playback
+                        return  # use the first annotation's recording
+        except Exception:
+            pass
 
     def _pretty_results(self, task, field, unique=False):
         if not hasattr(task, field) or getattr(task, field) is None:
